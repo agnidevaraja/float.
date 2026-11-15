@@ -27,6 +27,8 @@ import {
 interface View05BenchmarksProps {
   }
 
+const navigate = useNavigate();
+
 export const View05Benchmarks: React.FC<View05BenchmarksProps> = ({ result }) => {
   const formatNum = (val: number, decimals = 4) => val.toFixed(decimals);
 

@@ -1,7 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@400;600;700;800&family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@fontshare/card-grotesk@1.0/fonts/card-grotesk.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontshare/switzer@1.0/fonts/switzer.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontshare/general-sans@1.0/fonts/general-sans.css');
 @import "tailwindcss";
 
 @theme {
@@ -24,9 +22,10 @@
 
 * { box-sizing: border-box; }
 
-body {
+html, body, #root {
   margin: 0;
   padding: 0;
+  height: 100%;
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -53,6 +52,48 @@ button:active:not(:disabled), .pressable:active:not(:disabled) {
 ::-webkit-scrollbar-thumb { background: var(--border-hairline); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
 
-.font-display { font-family: var(--font-display); }
-.font-sans { font-family: var(--font-sans); }
-.font-mono { font-family: var(--font-mono); }
+.font-display { font-family: var(--font-display) !important; }
+.font-sans { font-family: var(--font-sans) !important; }
+.font-mono { font-family: var(--font-mono) !important; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 0;
+  outline: none;
+  border: 1px solid var(--border-hairline);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent-primary, #2563EB);
+  border: 1px solid var(--border-hairline);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-primary, #2563EB);
+  border: 1px solid var(--border-hairline);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+select {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-hairline);
+  border-radius: 0;
+}
+
+option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}

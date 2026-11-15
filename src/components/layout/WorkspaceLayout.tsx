@@ -1,11 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { CollapsibleSidebar } from './CollapsibleSidebar';
-import { TopTelemetryBar } from './TopTelemetryBar';
-import type { DealInput } from '../../types';
+import type { DealInput, RiskEvaluationResult, ScenarioPreset } from '../../types';
 import { evaluateB2bPaymentRisk } from '../../engine/riskEngine';
 import { SCENARIO_PRESETS } from '../../data/scenarios';
-import { THEME_PRESETS, FONT_PAIRINGS, DENSITY_PADDING } from '../../store/themeStore';
+import { THEME_PRESETS, FONT_PAIRINGS, DENSITY_PADDING, loadThemeState, saveThemeState, type ThemeState } from '../../store/themeStore';
+import { CollapsibleSidebar } from './CollapsibleSidebar';
+import { TopTelemetryBar } from './TopTelemetryBar';
 import { View01DealWorkbench } from '../views/View01DealWorkbench';
 import { View02RunwayLab } from '../views/View02RunwayLab';
 import { View03GstShield } from '../views/View03GstShield';
@@ -21,41 +20,37 @@ const DEFAULT_DEAL_INPUT: DealInput = {
 };
 
 export const WorkspaceLayout: React.FC = () => {
-  const location = useLocation();
+  const location = window.location;
   const viewId = location.pathname.replace('/workspace', '').replace('/', '') || 'deal';
   const [dealInput, setDealInput] = useState<DealInput>(DEFAULT_DEAL_INPUT);
-  const [themeState, setThemeState] = useState<any>(() => {
-    try {
-      const saved = localStorage.getItem('veritas-theme-state');
-      return saved ? JSON.parse(saved) : { theme: 'obsidian', fontPairing: 'precision', density: 'standard', showCrosshairs: false, customAccent: null };
-    } catch { return { theme: 'obsidian', fontPairing: 'precision', density: 'standard', showCrosshairs: false, customAccent: null }; }
-  });
+  const [themeState, setThemeState] = useState<ThemeState>(() => loadThemeState());
 
   const handleInputChange = useCallback((updated: Partial<DealInput>) => {
     setDealInput((prev) => ({ ...prev, ...updated }));
   }, []);
 
-  const handleLoadScenario = useCallback((scenario: any) => {
+  const handleLoadScenario = useCallback((scenario: ScenarioPreset) => {
     setDealInput({ ...scenario.params });
   }, []);
 
-  const handleThemeUpdate = useCallback((patch: any) => {
-    setThemeState((prev: any) => {
+  const handleThemeUpdate = useCallback((patch: Partial<ThemeState>) => {
+    setThemeState((prev) => {
       const next = { ...prev, ...patch };
-      localStorage.setItem('veritas-theme-state', JSON.stringify(next));
+      saveThemeState(next);
       return next;
     });
   }, []);
 
   const result = evaluateB2bPaymentRisk(dealInput);
 
+  // Apply theme CSS variables to document.documentElement
   useEffect(() => {
     const root = document.documentElement;
     const tokens = THEME_PRESETS[themeState.theme];
     Object.entries(tokens).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
-    root.style.setProperty('--accent-primary', themeState.customAccent || (tokens as any)['--accent-primary']);
+    root.style.setProperty('--accent-primary', themeState.customAccent || tokens['--accent-primary']);
     const fonts = FONT_PAIRINGS[themeState.fontPairing];
     root.style.setProperty('--font-display', fonts.display);
     root.style.setProperty('--font-sans', fonts.ui);
@@ -64,14 +59,13 @@ export const WorkspaceLayout: React.FC = () => {
   }, [themeState]);
 
   const renderView = () => {
-    const sharedProps = { input: dealInput, onInputChange: handleInputChange, result };
     switch (viewId) {
       case 'runway':
-        return <View02RunwayLab {...sharedProps} />;
+        return <View02RunwayLab input={dealInput} onInputChange={handleInputChange} result={result} />;
       case 'gst':
-        return <View03GstShield {...sharedProps} />;
+        return <View03GstShield input={dealInput} result={result} />;
       case 'ageing':
-        return <View04AgeingMatrix {...sharedProps} />;
+        return <View04AgeingMatrix input={dealInput} result={result} onLoadInvoice={handleInputChange} scenarioPresets={SCENARIO_PRESETS} />;
       case 'benchmarks':
         return <View05Benchmarks result={result} />;
       case 'settings':
@@ -83,10 +77,12 @@ export const WorkspaceLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
-      <CollapsibleSidebar activeView={viewId} onNavigate={(v: string) => { window.location.hash = v; }} />
+      <CollapsibleSidebar activeView={viewId} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopTelemetryBar activeView={viewId} onLoadScenario={handleLoadScenario} scenarioPresets={SCENARIO_PRESETS} themeState={themeState} onThemeUpdate={handleThemeUpdate} />
-        <main className="flex-1 overflow-y-auto p-5">{renderView()}</main>
+        <main className="flex-1 overflow-y-auto p-5">
+          {renderView()}
+        </main>
       </div>
     </div>
   );

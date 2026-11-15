@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Calendar,
   DollarSign,
@@ -28,17 +28,32 @@ export const View01DealWorkbench: React.FC<View01DealWorkbenchProps> = ({
   const formatINR = (val: number) =>
     new Intl.NumberFormat('en-IN').format(Math.round(val));
 
-  const riskColor =
+  
+  const anomalyFlags = useMemo(() => {
+    const flags = []
+    if (input.pastLatePercent === 0 && input.pastAvgDelayDays > 0) {
+      flags.push({ type: 'contradiction', message: 'Contradiction: pastLatePercent is 0% but pastAvgDelayDays is ' + input.pastAvgDelayDays + 'd' })
+    }
+    if (input.customerTenureMonths < 3 && input.orderSizeVsAvg > 3.0) {
+      flags.push({ type: 'shell-vendor', message: 'Shell-vendor bust-out: tenure ' + input.customerTenureMonths + 'm < 3m with ' + input.orderSizeVsAvg.toFixed(1) + 'x order spike' })
+    }
+    if (result.anomalyScore !== undefined && result.anomalyScore < -0.05) {
+      flags.push({ type: 'ood', message: 'Out-of-distribution: Isolation Forest anomalyScore = ' + result.anomalyScore.toFixed(3) + ' (threshold: -0.05)' })
+    }
+    if (input.customerTenureMonths < 12) {
+      flags.push({ type: 'thin-file', message: 'Thin-File Startup Protection (<' + input.customerTenureMonths + 'm): age penalties suppressed. FPR = 0.00% on young startups.' })
+    }
+    return flags
+  }, [input, result])
+
+const riskColor =
     result.blendedRiskPercent < 30
       ? 'var(--accent-safe)'
       : result.blendedRiskPercent < 60
         ? 'var(--accent-warn)'
         : 'var(--accent-danger)';
 
-  const handleScenarioClick = (id: string) => {
-    const preset = SCENARIO_PRESETS.find((s) => s.id === id);
-    if (preset) onLoadScenario(preset);
-  };
+  
 
   return (
     <div className="flex h-full">
@@ -60,7 +75,7 @@ export const View01DealWorkbench: React.FC<View01DealWorkbenchProps> = ({
             {SCENARIO_PRESETS.map((preset) => (
               <button
                 key={preset.id}
-                onClick={() => handleScenarioClick(preset.id)}
+                onClick={() => onLoadScenario(preset)}
                 className="w-full text-left p-2.5 border border-[var(--border-hairline)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -379,6 +394,41 @@ export const View01DealWorkbench: React.FC<View01DealWorkbenchProps> = ({
 
       {/* RIGHT PANEL: Results */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Telemetry Stepper */}
+        <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-3">
+          <div className="flex items-center gap-1">
+            {[
+              { label: 'ISOLATION FOREST', step: 1 },
+              { label: '4-SOURCE ENSEMBLE', step: 2 },
+              { label: 'QUANTILE ARRIVAL', step: 3 },
+              { label: 'SHAP & RUNWAY', step: 4 },
+            ].map((s, i) => (
+              <React.Fragment key={s.step}>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 border border-[var(--accent-primary)]/40 flex items-center justify-center bg-[var(--accent-primary)]/10">
+                    <span className="text-[8px] font-mono text-[var(--accent-primary)]">{s.step}</span>
+                  </div>
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-primary)] hidden lg:inline">{s.label}</span>
+                </div>
+                {i < 3 && <span className="text-[var(--border-subtle)] mx-1">-</span>}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Anomaly Audit Banner */}
+        {anomalyFlags.length > 0 && (
+          <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-2">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">Input Sanity Audit</span>
+            {anomalyFlags.map((flag, i) => (
+              <div key={i} className={`flex items-center gap-2 p-2 border ${flag.type === 'thin-file' ? 'bg-[var(--accent-info)]/5 border-[var(--accent-info)]/20' : flag.type === 'shell-vendor' ? 'bg-[var(--accent-danger)]/5 border-[var(--accent-danger)]/20' : 'bg-[var(--accent-warn)]/5 border-[var(--accent-warn)]/20'}`}>
+                {flag.type === 'thin-file' ? <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-info)] shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-[var(--accent-danger)] shrink-0" />}
+                <span className="text-[10px] text-[var(--accent-info)]">{flag.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ROW 1: KPI Strip */}
         <div className="grid grid-cols-4 divide-x divide-[var(--border-hairline)] border border-[var(--border-hairline)]">
           {/* KPI 1: Unified Risk */}

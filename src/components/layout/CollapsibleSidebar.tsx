@@ -81,7 +81,7 @@ export const CollapsibleSidebar: React.FC = () => {
       </nav>
       <div className="p-3 border-t border-[var(--border-hairline)]">
         <div className="text-[9px] font-mono text-[var(--text-tertiary)] text-center leading-relaxed">
-          Trained on 360,646 records. Not financial advice.
+          Trained on 360,646 records.<br />Not financial advice.
         </div>
       </div>
     </aside>
