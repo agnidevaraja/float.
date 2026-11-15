@@ -80,7 +80,7 @@ export const WorkspaceLayout: React.FC = () => {
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
       <CollapsibleSidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <TopTelemetryBar activeView={viewId} onLoadScenario={handleLoadScenario} scenarioPresets={SCENARIO_PRESETS} themeState={themeState} onThemeUpdate={handleThemeUpdate} />
+        <TopTelemetryBar activeView={viewId} themeState={themeState} onThemeUpdate={handleThemeUpdate} />
         <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--cell-padding, 20px)' }}>
           {renderView()}
         </main>
