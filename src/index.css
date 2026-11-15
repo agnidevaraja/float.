@@ -151,3 +151,4 @@ option {
 .border-accent-info/40 { border-color: color-mix(in srgb, var(--accent-info) 40%, transparent); }
 .hover:border-accent-primary:hover { border-color: var(--accent-primary); }
 .hover:text-accent-primary:hover { color: var(--accent-primary); }
+.field-input { background-color: var(--bg-elevated); border: 1px solid var(--border-hairline); border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-primary); outline: none; width: 100%; }

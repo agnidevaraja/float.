@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings, PanelLeft } from 'lucide-react';
+import { SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings, MessageSquare, PanelLeft } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -10,7 +10,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'deal', label: 'Deal Workbench', icon: SlidersHorizontal, path: '/workspace/deal' },
+  { id: 'deal', label: 'Deal Underwriting', icon: SlidersHorizontal, path: '/workspace/deal' },
+  { id: 'copilot', label: 'AI Risk Copilot', icon: MessageSquare, path: '/workspace/copilot' },
   { id: 'runway', label: 'Runway Lab', icon: TrendingUp, path: '/workspace/runway' },
   { id: 'gst', label: 'GST Shield', icon: Shield, path: '/workspace/gst' },
   { id: 'ageing', label: 'Ageing Matrix', icon: Table2, path: '/workspace/ageing' },

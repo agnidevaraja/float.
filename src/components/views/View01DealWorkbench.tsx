@@ -1,603 +1,251 @@
-import React, { useMemo } from 'react';
-import {
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
-  Calendar,
-  DollarSign,
-  TrendingDown,
-  ShieldAlert,
-  BarChart3,
-  AlertTriangle,
-  ShieldCheck,
-  Copy,
-  Check,
-  Info,
-} from 'lucide-react';
-import type { DealInput, RiskEvaluationResult } from '../../types';
-import type { ScenarioPreset } from '../../data/scenarios';
-import { SCENARIO_PRESETS } from '../../data/scenarios';
+import React, { useState, useCallback } from 'react';
+import { useWorkspace } from '../../store/workspaceStore';
+import { evaluateInvoicePipeline, loadApiConfig } from '../../services/inferenceBridge';
+import type { WhatIfScenario } from '../../types';
+import { ArrowRight, Plus, Save, Zap, ArrowLeft, Copy, Check, FileText, DollarSign, Clock, ShieldAlert } from 'lucide-react';
 
-interface View01DealWorkbenchProps {
-  input: DealInput;
-  onInputChange: (updated: Partial<DealInput>) => void;
-  result: RiskEvaluationResult;
-  onLoadScenario: (scenario: ScenarioPreset) => void;
-}
+const fmt = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 
-const CURRENCY = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
+export const View01DealWorkbench: React.FC = () => {
+  const { state, dispatch } = useWorkspace();
+  const [local, setLocal] = useState<Record<string, any>>({ ...state.intake });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState(false);
+  const [whatIfLabel, setWhatIfLabel] = useState('');
 
-export const View01DealWorkbench: React.FC<View01DealWorkbenchProps> = ({
-  input,
-  onInputChange,
-  result,
-  onLoadScenario,
-}) => {
-  const [copied, setCopied] = React.useState(false);
+  const update = (patch: Record<string, any>) => setLocal(prev => ({ ...prev, ...patch }));
 
-  const riskColor =
-    result.blendedRiskPercent < 30
-      ? 'var(--accent-safe)'
-      : result.blendedRiskPercent < 60
-        ? 'var(--accent-warn)'
-        : 'var(--accent-danger)';
-
-  const riskBg =
-    result.blendedRiskPercent < 30
-      ? 'var(--accent-safe)'
-      : result.blendedRiskPercent < 60
-        ? 'var(--accent-warn)'
-        : 'var(--accent-danger)';
-
-  const anomalyFlags = useMemo(() => {
-    const flags: { type: string; message: string; severity: 'info' | 'warn' | 'crit' }[] = [];
-    if (result.thinFileMode) {
-      flags.push({
-        type: 'thin-file',
-        message: `Thin-File Startup Protection Active (<${input.customerTenureMonths} months): Age penalties suppressed. 0.00% FPR on young startups.`,
-        severity: 'info',
-      });
-    }
-    if (input.pastLatePercent === 0 && input.pastAvgDelayDays > 0) {
-      flags.push({
-        type: 'contradiction',
-        message: `Data Contradiction: Past late rate is 0% but average delay is ${input.pastAvgDelayDays} days.`,
-        severity: 'warn',
-      });
-    }
-    if (input.customerTenureMonths < 3 && input.orderSizeVsAvg > 3.0) {
-      flags.push({
-        type: 'shell-vendor',
-        message: `Shell-Vendor Pattern: ${input.customerTenureMonths}-month-old entity billing ${input.orderSizeVsAvg.toFixed(1)}x normal volume.`,
-        severity: 'crit',
-      });
-    }
-    if (result.integrityWarnings.some(w => w.code === 'WARN_OUT_OF_BOUNDS')) {
-      flags.push({
-        type: 'ood',
-        message: 'Out-of-Distribution: Input profile deviates from 45,839-record B2B norms.',
-        severity: 'warn',
-      });
-    }
-    return flags;
-  }, [input, result]);
-
-  const handleCopyClause = () => {
-    navigator.clipboard.writeText(result.recommendedTerms.contractClause);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!local.invoiceAmount || local.invoiceAmount <= 0) e.invoiceAmount = 'Required';
+    if (!local.paymentTermDays || local.paymentTermDays < 1) e.paymentTermDays = 'Min 1 day';
+    if (!local.currentBankBalance && local.currentBankBalance !== 0) e.currentBankBalance = 'Required';
+    if (!local.monthlyFixedExpenses && local.monthlyFixedExpenses !== 0) e.monthlyFixedExpenses = 'Required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const arrivalPctLow = Math.min(100, Math.max(0, (result.arrivalWindowLow / 90) * 100));
-  const arrivalPctHigh = Math.min(100, Math.max(0, (result.arrivalWindowHigh / 90) * 100));
-  const arrivalPctExpected = Math.min(100, Math.max(0, (result.expectedArrivalDay / 90) * 100));
+  const handleEvaluate = useCallback(async () => {
+    if (!validate()) return;
+    dispatch({ type: 'SET_EVALUATING', payload: true });
+    try {
+      const config = loadApiConfig();
+      const req = local as any;
+      const result = await evaluateInvoicePipeline(req, config);
+      dispatch({ type: 'SET_INTAKE', payload: req });
+      dispatch({ type: 'SET_RESULT', payload: result });
+      dispatch({ type: 'SET_PROVENANCE', payload: { provenance: result.provenance, latencyMs: result.latencyMs } });
+      dispatch({ type: 'SET_PHASE', payload: 'dossier' });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      dispatch({ type: 'SET_EVALUATING', payload: false });
+    }
+  }, [local, dispatch]);
+
+  const handleWhatIf = () => {
+    if (!state.currentResult || !whatIfLabel.trim()) return;
+    const scenario: WhatIfScenario = {
+      id: Date.now().toString(),
+      label: whatIfLabel.trim(),
+      request: local as any,
+      result: null,
+      createdAt: new Date(),
+    };
+    dispatch({ type: 'ADD_WHATIF', payload: scenario });
+    setWhatIfLabel('');
+    evaluateInvoicePipeline(local as any, loadApiConfig()).then(result => {
+      dispatch({ type: 'ADD_WHATIF', payload: { ...scenario, result } });
+    });
+  };
+
+  const handleSaveLedger = () => {
+    if (!state.currentResult) return;
+    dispatch({
+      type: 'ADD_LEDGER_ENTRY',
+      payload: {
+        id: Date.now().toString(),
+        clientName: (local as any).clientName || 'Unknown',
+        invoiceAmount: local.invoiceAmount,
+        paymentTermDays: local.paymentTermDays,
+        riskPercent: state.currentResult.blendedRiskPercent,
+        expectedArrivalDay: state.currentResult.expectedArrivalDay,
+        status: state.currentResult.blendedRiskPercent > 60 ? 'OVERDUE' : state.currentResult.blendedRiskPercent > 30 ? 'PENDING' : 'ON_TRACK',
+        savedAt: new Date(),
+      },
+    });
+  };
+
+  if (state.phase === 'dossier' && state.currentResult) {
+    return <DossierPhase result={state.currentResult} intake={local} provenance={state.provenance} latencyMs={state.latencyMs} whatIfs={state.whatIfs} whatIfLabel={whatIfLabel} setWhatIfLabel={setWhatIfLabel} onWhatIf={handleWhatIf} onSaveLedger={handleSaveLedger} onEdit={() => dispatch({ type: 'SET_PHASE', payload: 'intake' })} onCopy={setCopied} copied={copied} />;
+  }
 
   return (
-    <div className="flex h-full">
-      {/* LEFT PARAMETER RAIL */}
-      <div className="w-[340px] shrink-0 border-r border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-y-auto">
-        <div className="p-5 space-y-5">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)]">
-              Deal Parameters
-            </span>
-            <span className="text-[10px] font-mono text-[var(--text-tertiary)]">Real-Time</span>
-          </div>
-
-          {/* Scenario Presets */}
-          <div className="space-y-1.5">
-            {SCENARIO_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                onClick={() => onLoadScenario(preset)}
-                className="w-full text-left p-2.5 border border-[var(--border-hairline)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[var(--text-primary)]">
-                    {preset.name}
-                  </span>
-                  <span
-                    className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 border"
-                    style={{
-                      color: preset.badgeType === 'emerald' ? 'var(--accent-safe)'
-                        : preset.badgeType === 'amber' ? 'var(--accent-warn)'
-                        : preset.badgeType === 'rose' ? 'var(--accent-danger)'
-                        : 'var(--accent-info)',
-                      borderColor: preset.badgeType === 'emerald' ? 'var(--accent-safe)'
-                        : preset.badgeType === 'amber' ? 'var(--accent-warn)'
-                        : preset.badgeType === 'rose' ? 'var(--accent-danger)'
-                        : 'var(--accent-info)',
-                    }}
-                  >
-                    {preset.badge}
-                  </span>
-                </div>
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">
-                  {preset.description}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          {/* Invoice Amount */}
-          <div>
-            <label className="text-[11px] font-medium text-[var(--text-muted)] mb-1 flex items-center justify-between">
-              <span>Invoice Principal</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">
-                &#8377;{CURRENCY.format(input.invoiceAmount)}
-              </span>
-            </label>
-            <input
-              type="number"
-              value={input.invoiceAmount}
-              onChange={(e) => onInputChange({ invoiceAmount: parseFloat(e.target.value) || 0 })}
-              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-hairline)] py-1.5 px-2.5 text-xs font-mono text-[var(--text-primary)] focus:border-[var(--border-subtle)] focus:outline-none"
-            />
-          </div>
-
-          {/* Payment Term */}
-          <div>
-            <label className="text-[11px] font-medium text-[var(--text-muted)] mb-1 flex items-center justify-between">
-              <span>Promised Payment Term</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">
-                Net-{input.paymentTermDays} Days
-              </span>
-            </label>
-            <div className="flex space-x-1.5">
-              {[15, 30, 45, 60].map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => onInputChange({ paymentTermDays: days })}
-                  className={`flex-1 py-1.5 text-[10px] font-mono border transition-colors ${
-                    input.paymentTermDays === days
-                      ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)]/40 text-[var(--accent-primary)]'
-                      : 'bg-[var(--bg-elevated)] border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  {days}d
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Slider: Customer Tenure */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-[var(--text-muted)]">Counterparty Age</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">
-                {input.customerTenureMonths} Mo
-                {input.customerTenureMonths < 12 && (
-                  <span className="text-[9px] text-[var(--accent-info)] ml-1">(Thin-File)</span>
-                )}
-              </span>
-            </div>
-            <input type="range" min="1" max="120" value={input.customerTenureMonths}
-              onChange={(e) => onInputChange({ customerTenureMonths: parseInt(e.target.value, 10) })}
-              className="w-full" style={{ accentColor: 'var(--accent-primary)' }} />
-          </div>
-
-          {/* Slider: Past Late Rate */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-[var(--text-muted)]">Past Late Rate</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">{input.pastLatePercent}%</span>
-            </div>
-            <input type="range" min="0" max="100" step="5" value={input.pastLatePercent}
-              onChange={(e) => onInputChange({ pastLatePercent: parseInt(e.target.value, 10) })}
-              className="w-full" style={{ accentColor: 'var(--accent-warn)' }} />
-          </div>
-
-          {/* Slider: Order Size */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-[var(--text-muted)]">Order Size vs Average</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">{input.orderSizeVsAvg.toFixed(1)}x</span>
-            </div>
-            <input type="range" min="0.5" max="5.0" step="0.1" value={input.orderSizeVsAvg}
-              onChange={(e) => onInputChange({ orderSizeVsAvg: parseFloat(e.target.value) })}
-              className="w-full" style={{ accentColor: 'var(--accent-danger)' }} />
-          </div>
-
-          {/* Slider: Avg Delay */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-[var(--text-muted)]">Avg Historical Delay</span>
-              <span className="font-mono text-xs text-[var(--text-primary)] tabular-nums">{input.pastAvgDelayDays} d</span>
-            </div>
-            <input type="range" min="0" max="45" step="1" value={input.pastAvgDelayDays}
-              onChange={(e) => onInputChange({ pastAvgDelayDays: parseInt(e.target.value, 10) })}
-              className="w-full" style={{ accentColor: 'var(--accent-primary)' }} />
-          </div>
-
-          {/* Due Weekday */}
-          <div>
-            <label className="text-[11px] font-medium text-[var(--text-muted)] mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-[var(--text-tertiary)]" />
-                Due Weekday
-              </span>
-              <span className="text-[10px] text-[var(--text-tertiary)]">Affects clearing</span>
-            </label>
-            <div className="grid grid-cols-7 gap-1">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
-                const warn = day === 'Mon' || day === 'Sat' || day === 'Sun';
-                const sel = input.dueWeekday === day;
-                return (
-                  <button
-                    key={day}
-                    onClick={() => onInputChange({ dueWeekday: day as DueDayOfWeek })}
-                    className={`py-1.5 text-[10px] font-mono border ${
-                      sel ? 'border-[var(--accent-primary)]/40 text-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
-                        : warn ? 'border-[var(--accent-danger)]/30 text-[var(--accent-danger)] hover:border-[var(--accent-danger)]/60'
-                        : 'border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-            {(input.dueWeekday === 'Mon' || input.dueWeekday === 'Sat' || input.dueWeekday === 'Sun') && (
-              <div className="flex items-center gap-1.5 mt-2 p-2 bg-[var(--accent-danger)]/5 border border-[var(--accent-danger)]/20">
-                <AlertTriangle className="w-3 h-3 text-[var(--accent-danger)] shrink-0" />
-                <span className="text-[10px] text-[var(--accent-danger)]">
-                  {input.dueWeekday === 'Mon' ? 'Mondays: highest clearance delay (+0.28d)'
-                    : input.dueWeekday === 'Sat' ? 'Saturday invoices clear Monday only'
-                    : 'Sunday invoices clear Monday only'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* FRED Macro Stress */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-[var(--text-muted)]">FRED Macro Stress</span>
-              <span className="font-mono text-xs tabular-nums" style={{ color: input.macroStressMultiplier >= 1.5 ? 'var(--accent-danger)' : 'var(--accent-primary)' }}>
-                {input.macroStressMultiplier.toFixed(1)}x
-                {input.macroStressMultiplier >= 1.5 ? ' (Recession)' : ' (Normal)'}
-              </span>
-            </div>
-            <input type="range" min="0.8" max="2.0" step="0.1" value={input.macroStressMultiplier}
-              onChange={(e) => onInputChange({ macroStressMultiplier: parseFloat(e.target.value) })}
-              className="w-full" style={{ accentColor: 'var(--accent-primary)' }} />
-          </div>
-
-          {/* Cash Runway Inputs */}
-          <div className="pt-4 border-t border-[var(--border-hairline)] space-y-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-[var(--accent-safe)]" />
-              Cash Runway Inputs
-            </span>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] mb-1">Bank Balance</label>
-                <input type="number" value={input.currentBankBalance}
-                  onChange={(e) => onInputChange({ currentBankBalance: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-hairline)] py-1.5 px-2.5 text-xs font-mono text-[var(--text-primary)] focus:border-[var(--border-subtle)] focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] mb-1">Monthly Burn</label>
-                <input type="number" value={input.monthlyFixedExpenses}
-                  onChange={(e) => onInputChange({ monthlyFixedExpenses: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-hairline)] py-1.5 px-2.5 text-xs font-mono text-[var(--text-primary)] focus:border-[var(--border-subtle)] focus:outline-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* GST Toggle */}
-          <div className="pt-4 border-t border-[var(--border-hairline)] flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[var(--text-muted)] flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
-              GST Registered MSME
-            </span>
-            <button
-              onClick={() => onInputChange({ gstRegistered: !input.gstRegistered })}
-              className={`px-3 py-1 text-[10px] font-mono border transition-colors ${
-                input.gstRegistered
-                  ? 'bg-[var(--accent-safe)]/10 border-[var(--accent-safe)]/40 text-[var(--accent-safe)]'
-                  : 'bg-[var(--bg-elevated)] border-[var(--border-hairline)] text-[var(--text-muted)]'
-              }`}
-            >
-              {input.gstRegistered ? 'ACTIVE' : 'INACTIVE'}
-            </button>
-          </div>
-        </div>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Deal Underwriting</h1>
+        <p className="text-xs text-[var(--text-muted)] mt-1">Enter counterparty and invoice details. Treasury defaults pre-filled from Settings.</p>
       </div>
 
-      {/* RIGHT RESULTS CANVAS */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
-
-        {/* Telemetry Processing Stepper */}
-        <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2.5">
-          <div className="flex items-center">
-            {[
-              { label: 'ISOLATION FOREST', step: 1 },
-              { label: '4-SOURCE ENSEMBLE', step: 2 },
-              { label: 'QUANTILE ARRIVAL', step: 3 },
-              { label: 'SHAP & RUNWAY', step: 4 },
-            ].map((s, i) => (
-              <React.Fragment key={s.step}>
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border border-[var(--accent-primary)]/40 flex items-center justify-center bg-[var(--accent-primary)]/10">
-                    <span className="text-[7px] font-mono text-[var(--accent-primary)]">{s.step}</span>
-                  </div>
-                  <span className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-muted)] hidden xl:inline">{s.label}</span>
-                </div>
-                {i < 3 && <div className="w-4 h-px bg-[var(--border-hairline)] mx-1.5" />}
-              </React.Fragment>
-            ))}
-          </div>
+      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
+          <FileText className="w-3.5 h-3.5 text-[var(--accent-primary)]" /> Section 01: Counterparty & Invoice Details
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Counterparty Legal Name"><input type="text" value={(local as any).clientName || ''} onChange={e => update({ clientName: e.target.value })} placeholder="e.g., TechForge Pvt Ltd" className="field-input" /></Field>
+          <Field label="Optional GSTIN" optional><input type="text" value={(local as any).gstin || ''} onChange={e => update({ gstin: e.target.value })} placeholder="e.g., 27AABCT1234R1ZX" className="field-input" /></Field>
+          <Field label="Invoice Principal (INR)" error={errors.invoiceAmount}><input type="number" value={local.invoiceAmount || ''} onChange={e => update({ invoiceAmount: parseFloat(e.target.value) || 0 })} placeholder="e.g., 125000" className="field-input text-right" /></Field>
+          <Field label="Promised Payment Term (days)" error={errors.paymentTermDays}><input type="number" value={local.paymentTermDays || ''} onChange={e => update({ paymentTermDays: parseInt(e.target.value) || 0 })} placeholder="e.g., 30" className="field-input text-right" /></Field>
+          <Field label="Counterparty Tenure (months)" error={errors.customerTenureMonths}><input type="number" value={local.customerTenureMonths || ''} onChange={e => update({ customerTenureMonths: parseInt(e.target.value) || 0 })} placeholder="e.g., 14" className="field-input text-right" /></Field>
+          <Field label="Invoice Due Weekday">
+            <select value={local.dueWeekday} onChange={e => update({ dueWeekday: e.target.value })} className="field-input">
+              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            {['Mon','Sat','Sun'].includes(local.dueWeekday) && <span className="text-[9px] font-mono text-[var(--accent-warn)] mt-1 block">AP batch lag: Corporate pay cycles clear Mon-Fri only</span>}
+          </Field>
         </div>
+      </section>
 
-        {/* Anomaly Audit Banner */}
-        {anomalyFlags.length > 0 && (
-          <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-2">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">Input Sanity Audit</span>
-            {anomalyFlags.map((flag, i) => (
-              <div key={i} className={`flex items-start gap-2 p-2 border ${
-                flag.severity === 'crit' ? 'bg-[var(--accent-danger)]/5 border-[var(--accent-danger)]/20'
-                : flag.severity === 'warn' ? 'bg-[var(--accent-warn)]/5 border-[var(--accent-warn)]/20'
-                : 'bg-[var(--accent-info)]/5 border-[var(--accent-info)]/20'
-              }`}>
-                {flag.type === 'thin-file' ? (
-                  <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-info)] shrink-0 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="w-3.5 h-3.5 text-[var(--accent-danger)] shrink-0 mt-0.5" />
-                )}
-                <span className="text-[10px] leading-relaxed" style={{
-                  color: flag.type === 'thin-file' ? 'var(--accent-info)' : 'var(--accent-danger)'
-                }}>{flag.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ROW 1: 4-Cell KPI Strip */}
-        <div className="grid grid-cols-4 divide-x divide-[var(--border-hairline)] border border-[var(--border-hairline)]">
-          {/* KPI 1: Unified Risk */}
-          <div className="p-4">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-              Unified Late / Default Risk
-            </span>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-[28px] font-bold font-mono tabular-nums leading-none" style={{ color: riskColor }}>
-                {result.blendedRiskPercent.toFixed(1)}
-              </span>
-              <span className="text-xs text-[var(--text-muted)]">%</span>
+      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5 text-[var(--accent-primary)]" /> Section 02: Historical Behavior & Macro Context
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Past Invoices Count" optional><input type="number" value={(local as any).pastInvoiceCount || ''} onChange={e => update({ pastInvoiceCount: parseInt(e.target.value) || 0 })} placeholder="e.g., 25" className="field-input text-right" /></Field>
+          <Field label="Past Late Payment Rate (%)" error={errors.pastLatePercent}><input type="number" min="0" max="100" value={local.pastLatePercent || ''} onChange={e => update({ pastLatePercent: parseFloat(e.target.value) || 0 })} placeholder="e.g., 30" className="field-input text-right" /></Field>
+          <Field label="Historical Average Delay (days)" error={errors.pastAvgDelayDays}><input type="number" min="0" value={local.pastAvgDelayDays || ''} onChange={e => update({ pastAvgDelayDays: parseFloat(e.target.value) || 0 })} placeholder="e.g., 8" className="field-input text-right" /></Field>
+          <Field label="Order Size vs Historical Average (x)" error={errors.orderSizeVsAvg}><input type="number" min="0.1" step="0.1" value={local.orderSizeVsAvg || ''} onChange={e => update({ orderSizeVsAvg: parseFloat(e.target.value) || 1 })} placeholder="e.g., 1.8" className="field-input text-right" /></Field>
+          <Field label="FRED Macro Stress Multiplier" optional>
+            <div className="flex items-center gap-3">
+              <input type="range" min="0.8" max="2.0" step="0.1" value={local.macroStressMultiplier} onChange={e => update({ macroStressMultiplier: parseFloat(e.target.value) })} className="flex-1 h-1 bg-[var(--bg-elevated)] appearance-none cursor-pointer" />
+              <span className="text-xs font-mono tabular-nums text-[var(--text-primary)] w-12 text-right">{local.macroStressMultiplier.toFixed(1)}x</span>
             </div>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 border" style={{ color: riskColor, borderColor: riskColor }}>
-                {result.blendedRiskPercent < 30 ? 'LOW' : result.blendedRiskPercent < 60 ? 'MODERATE' : 'HIGH'}
-              </span>
-            </div>
-            <div className="mt-2 pt-2 border-t border-[var(--border-hairline)] space-y-0.5">
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--text-tertiary)]">B2B+FRED</span>
-                <span className="font-mono tabular-nums text-[var(--text-primary)]">{result.b2bMacroRiskPercent.toFixed(1)}%</span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--text-tertiary)]">Credit</span>
-                <span className="font-mono tabular-nums text-[var(--text-primary)]">{result.creditDefaultRiskPercent.toFixed(1)}%</span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--text-tertiary)]">Fraud Spike</span>
-                <span className="font-mono tabular-nums text-[var(--text-primary)]">{result.fraudSpikeRiskPercent.toFixed(1)}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* KPI 2: Arrival Window */}
-          <div className="p-4">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-              Promised vs Predicted Cash Arrival
-            </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-lg font-mono tabular-nums text-[var(--text-muted)]">
-                D{input.paymentTermDays}
-              </span>
-              <ArrowDownRight className="w-3.5 h-3.5 text-[var(--accent-danger)]" />
-              <span className="text-lg font-bold font-mono tabular-nums text-[var(--text-primary)]">
-                D{result.expectedArrivalDay}
-              </span>
-            </div>
-            {/* Horizon Bullet Bar */}
-            <div className="mt-3 h-2 bg-[var(--bg-elevated)] relative">
-              <div className="absolute h-full bg-[var(--accent-primary)]/40" style={{ left: `${arrivalPctLow}%`, width: `${arrivalPctHigh - arrivalPctLow}%` }} />
-              <div className="absolute w-1 h-3 -top-0.5 bg-[var(--accent-primary)]" style={{ left: `calc(${arrivalPctExpected}% - 2px)` }} />
-              <div className="absolute top-3 left-0 right-0 flex justify-between text-[8px] font-mono text-[var(--text-tertiary)]">
-                <span>Day {result.arrivalWindowLow}</span>
-                <span>Day {result.arrivalWindowHigh}</span>
-              </div>
-            </div>
-            <p className="text-[9px] text-[var(--text-tertiary)] mt-2">
-              P20-P80 window: D{result.arrivalWindowLow}-D{result.arrivalWindowHigh}
-            </p>
-          </div>
-
-          {/* KPI 3: Cash at Risk */}
-          <div className="p-4">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-              Total Working Capital at Risk
-            </span>
-            <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-sm text-[var(--text-muted)]">&#8377;</span>
-              <span className="text-xl font-bold font-mono tabular-nums text-[var(--text-primary)]">
-                {CURRENCY.format(result.totalAtRisk)}
-              </span>
-            </div>
-            <div className="mt-2 space-y-1">
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--text-tertiary)]">Principal</span>
-                <span className="font-mono tabular-nums text-[var(--text-primary)]">{CURRENCY.format(input.invoiceAmount)}</span>
-              </div>
-              {input.gstRegistered && (
-                <div className="flex justify-between text-[9px]">
-                  <span className="text-[var(--accent-warn)]">GST ITC Lockup (18%)</span>
-                  <span className="font-mono tabular-nums text-[var(--accent-warn)]">{CURRENCY.format(result.gstItcLocked)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* KPI 4: Runway Verdict */}
-          <div className="p-4">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-              60-Day Cash-Flow Survival
-            </span>
-            <div className="mt-2">
-              {result.isRunwayCollision ? (
-                <div>
-                  <span className="text-lg font-bold font-mono text-[var(--accent-danger)] uppercase tracking-wider">
-                    COLLISION ALERT
-                  </span>
-                  <span className="text-[10px] font-mono text-[var(--accent-danger)] tabular-nums block mt-0.5">
-                    Day {result.collisionDay}
-                  </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block mt-1">
-                    Shortfall: {CURRENCY.format(result.shortfallAmount)}
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  <span className="text-lg font-bold font-mono text-[var(--accent-safe)] uppercase tracking-wider flex items-center gap-1">
-                    <ArrowUpRight className="w-4 h-4" />
-                    RUNWAY SAFE
-                  </span>
-                  <span className="text-[10px] font-mono text-[var(--accent-safe)] tabular-nums block mt-0.5">
-                    Buffer: {CURRENCY.format(result.cashBufferAtArrival)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+          </Field>
         </div>
+      </section>
 
-        {/* ROW 2: Two Column Layout */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Smart Payment-Term Fixer */}
-          <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-              <TrendingDown className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-              Smart Payment-Term Fixer
-            </span>
-
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex-1 border border-[var(--border-hairline)] p-2.5">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">Current Terms</span>
-                <p className="text-xs font-mono text-[var(--text-primary)] mt-1">
-                  Net-{input.paymentTermDays} Days
-                </p>
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">100% on maturity</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
-              <div className="flex-1 border p-2.5" style={{ borderColor: riskColor }}>
-                <span className="text-[9px] font-mono uppercase tracking-wider" style={{ color: riskColor }}>
-                  {result.recommendedTerms.badgeLabel}
-                </span>
-                <p className="text-xs font-mono text-[var(--text-primary)] mt-1">
-                  {result.recommendedTerms.upfrontPercent}% Upfront + {result.recommendedTerms.onDeliveryPercent}% Delivery + Net-{result.recommendedTerms.netTermDays}
-                </p>
-              </div>
+      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
+          <DollarSign className="w-3.5 h-3.5 text-[var(--accent-primary)]" /> Section 03: Your Business Liquidity & Tax Position
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="GST-Registered MSME">
+            <div className="flex items-center gap-3">
+              <button onClick={() => update({ gstRegistered: !local.gstRegistered })} className={'px-4 py-2 text-xs font-mono border transition-colors ' + (local.gstRegistered ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]' : 'border-[var(--border-hairline)] text-[var(--text-muted)]')}>{local.gstRegistered ? 'YES' : 'NO'}</button>
+              {local.gstRegistered && <select value={(local as any).gstSlab || 18} onChange={e => update({ gstSlab: parseInt(e.target.value) })} className="field-input"><option value={5}>5%</option><option value={12}>12%</option><option value={18}>18%</option><option value={28}>28%</option></select>}
             </div>
-
-            <div className="mt-3 p-2.5 bg-[var(--bg-elevated)] border border-[var(--border-hairline)]">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-[var(--text-muted)]">Exposure Reduction</span>
-                <span className="text-sm font-bold font-mono tabular-nums text-[var(--accent-safe)]">
-                  -{result.recommendedTerms.exposureReductionPercent}%
-                </span>
-              </div>
-              <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed">
-                {result.recommendedTerms.rationale}
-              </p>
-            </div>
-
-            <button
-              onClick={handleCopyClause}
-              className="mt-3 w-full py-1.5 border border-[var(--border-hairline)] text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)] flex items-center justify-center gap-1.5 transition-colors"
-            >
-              {copied ? <Check className="w-3 h-3 text-[var(--accent-safe)]" /> : <Copy className="w-3 h-3" />}
-              {copied ? 'COPIED TO CLIPBOARD' : 'COPY CONTRACT CLAUSE'}
-            </button>
-          </div>
-
-          {/* SHAP Attribution */}
-          <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-              SHAP Explainability
-            </span>
-            <p className="text-[10px] text-[var(--text-tertiary)] mt-1 mb-3">
-              Feature drivers pushing risk up (red) or down (green)
-            </p>
-            <div className="space-y-3">
-              {result.topShapFactors.slice(0, 4).map((factor, idx) => {
-                const maxImpact = Math.max(...result.topShapFactors.map(f => f.impactScore), 1);
-                const barWidth = (factor.impactScore / maxImpact) * 100;
-                const isIncrease = factor.direction === 'RISK_INCREASE';
-                return (
-                  <div key={idx}>
-                    <div className="flex items-center justify-between text-[10px] mb-1">
-                      <span className="text-[var(--text-muted)]">{factor.factor}</span>
-                      <span className="font-mono tabular-nums" style={{ color: isIncrease ? 'var(--accent-danger)' : 'var(--accent-safe)' }}>
-                        {isIncrease ? '+' : '-'}{factor.impactScore.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-[var(--bg-elevated)]">
-                      <div className="h-full" style={{ width: `${barWidth}%`, backgroundColor: isIncrease ? 'var(--accent-danger)' : 'var(--accent-safe)' }} />
-                    </div>
-                    <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">{factor.explanation}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          </Field>
+          <Field label="Current Bank Balance (INR)" error={errors.currentBankBalance}><input type="number" value={local.currentBankBalance || ''} onChange={e => update({ currentBankBalance: parseFloat(e.target.value) || 0 })} placeholder="e.g., 250000" className="field-input text-right" /></Field>
+          <Field label="Monthly Fixed Operating Burn (INR)" error={errors.monthlyFixedExpenses}><input type="number" value={local.monthlyFixedExpenses || ''} onChange={e => update({ monthlyFixedExpenses: parseFloat(e.target.value) || 0 })} placeholder="e.g., 160000" className="field-input text-right" /></Field>
         </div>
+      </section>
 
-        {/* ROW 3: Live FRED Macro Ticker */}
-        <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2.5 flex items-center gap-4">
-          <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">Live FRED Macro</span>
-          <div className="w-px h-4 bg-[var(--border-hairline)]" />
-          <span className="text-[10px] font-mono tabular-nums text-[var(--text-primary)]">
-            BAA10Y Spread: <span className="text-[var(--accent-warn)]">{result.liveSpread.toFixed(2)}%</span>
-          </span>
-          <div className="w-px h-4 bg-[var(--border-hairline)]" />
-          <span className="text-[10px] font-mono tabular-nums text-[var(--text-primary)]">
-            Biz Loan Delinq: <span style={{ color: result.liveDelinquency > 1.5 ? 'var(--accent-danger)' : 'var(--accent-safe)' }}>{result.liveDelinquency.toFixed(2)}%</span>
-          </span>
-          <div className="w-px h-4 bg-[var(--border-hairline)]" />
-          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-            Stress: {input.macroStressMultiplier.toFixed(1)}x
-          </span>
-        </div>
+      <div className="flex items-center justify-between border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
+        <div className="text-[10px] font-mono text-[var(--text-tertiary)]">Pipeline: Isolation Forest -&gt; 4-Source GBDT -&gt; Quantile Arrival -&gt; SHAP &amp; Runway</div>
+        <button onClick={handleEvaluate} disabled={state.isEvaluating} className="px-6 py-2.5 text-xs font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 disabled:opacity-40 transition-colors flex items-center gap-2">
+          {state.isEvaluating ? <span className="flex gap-1"><span className="w-1.5 h-1.5 bg-white animate-pulse" /><span className="w-1.5 h-1.5 bg-white animate-pulse" style={{ animationDelay: '0.2s' }} /><span className="w-1.5 h-1.5 bg-white animate-pulse" style={{ animationDelay: '0.4s' }} /></span> : <><Zap className="w-3.5 h-3.5" /> Run Risk Evaluation <ArrowRight className="w-3.5 h-3.5" /></>}
+        </button>
       </div>
     </div>
   );
 };
+
+function Field({ label, children, error, optional }: { label: string; children: React.ReactNode; error?: string; optional?: boolean }) {
+  return (
+    <div>
+      <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] block mb-1.5">{label} {optional && <span className="text-[var(--text-tertiary)]">(optional)</span>}</label>
+      {children}
+      {error && <span className="text-[9px] font-mono text-[var(--accent-danger)] mt-1 block">{error}</span>}
+    </div>
+  );
+}
+
+function DossierPhase({ result, intake, provenance, latencyMs, whatIfs, whatIfLabel, setWhatIfLabel, onWhatIf, onSaveLedger, onEdit, onCopy, copied }: any) {
+  const riskColor = result.blendedRiskPercent < 30 ? 'var(--accent-safe)' : result.blendedRiskPercent < 60 ? 'var(--accent-warn)' : 'var(--accent-danger)';
+  const clause = result.recommendedTerms.contractClause;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3">
+        <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono border border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"><ArrowLeft className="w-3 h-3" /> EDIT PARAMETERS</button>
+        <div className={'px-2 py-1 text-[9px] font-mono border ' + (provenance === 'LOCAL_ENGINE' ? 'border-[var(--accent-safe)]/40 text-[var(--accent-safe)]' : 'border-[var(--accent-primary)]/40 text-[var(--accent-primary)]')}>{provenance === 'LOCAL_ENGINE' ? 'CALIBRATED LOCAL ENGINE' : 'LIVE COLAB MODEL'} {latencyMs !== null && '(' + latencyMs + 'ms)'}</div>
+        <button onClick={onSaveLedger} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono border border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"><Save className="w-3 h-3" /> SAVE TO PORTFOLIO</button>
+      </div>
+      <div className="grid grid-cols-4 divide-x divide-[var(--border-hairline)] border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
+        <KPICell label="BLENDED RISK" value={result.blendedRiskPercent.toFixed(1) + '%'} color={riskColor} sub="B2B+FRED 60% | Credit 25% | Fraud 15%" />
+        <KPICell label="ARRIVAL DAY" value={'Day ' + result.expectedArrivalDay} color="var(--accent-primary)" sub={'P20: D' + result.arrivalWindowLow + ' | P80: D' + result.arrivalWindowHigh} />
+        <KPICell label="TOTAL AT RISK" value={fmt(result.totalAtRisk)} color="var(--accent-warn)" sub={'GST ITC: ' + fmt(result.gstItcLocked)} />
+        <KPICell label="RUNWAY" value={result.isRunwayCollision ? 'COLLISION' : 'SAFE'} color={result.isRunwayCollision ? 'var(--accent-danger)' : 'var(--accent-safe)'} sub={result.isRunwayCollision ? 'Day ' + result.collisionDay : '+' + fmt(result.cashBufferAtArrival) + ' buffer'} />
+      </div>
+      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-3">What-If Scenario Comparator</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <input type="text" value={whatIfLabel} onChange={e => setWhatIfLabel(e.target.value)} placeholder="e.g., Net-45 vs 30% Upfront + Net-15" className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-hairline)] py-2 px-3 text-xs font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--border-subtle)] focus:outline-none" />
+          <button onClick={onWhatIf} disabled={!whatIfLabel.trim()} className="px-4 py-2 text-[10px] font-mono border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 disabled:opacity-30 transition-colors flex items-center gap-1.5"><Plus className="w-3 h-3" /> RUN</button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4">
+            <div className="text-[9px] font-mono uppercase tracking-wider text-[var(--accent-primary)] mb-2">Current Deal</div>
+            <div className="space-y-1.5 text-[11px] font-mono">
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Risk</span><span style={{ color: riskColor }}>{result.blendedRiskPercent.toFixed(1)}%</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Arrival</span><span className="text-[var(--text-primary)]">Day {result.expectedArrivalDay}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">At Risk</span><span className="text-[var(--text-primary)]">{fmt(result.totalAtRisk)}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Terms</span><span className="text-[var(--text-primary)]">Net-{intake.paymentTermDays}</span></div>
+            </div>
+          </div>
+          {whatIfs.map((w: any) => w.result && (
+            <div key={w.id} className="border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-4">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] mb-2">{w.label}</div>
+              <div className="space-y-1.5 text-[11px] font-mono">
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Risk</span><span style={{ color: w.result.blendedRiskPercent < 30 ? 'var(--accent-safe)' : w.result.blendedRiskPercent < 60 ? 'var(--accent-warn)' : 'var(--accent-danger)' }}>{w.result.blendedRiskPercent.toFixed(1)}%</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Arrival</span><span className="text-[var(--text-primary)]">Day {w.result.expectedArrivalDay}</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">At Risk</span><span className="text-[var(--text-primary)]">{fmt(w.result.totalAtRisk)}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-3">Recommended Payment Terms</h3>
+        <div className={'inline-block px-3 py-1.5 text-[10px] font-mono border mb-3 ' + (result.recommendedTerms.tier === 'APPROVED' ? 'border-[var(--accent-safe)]/40 text-[var(--accent-safe)]' : result.recommendedTerms.tier === 'MODERATE_RISK' ? 'border-[var(--accent-warn)]/40 text-[var(--accent-warn)]' : 'border-[var(--accent-danger)]/40 text-[var(--accent-danger)]')}>{result.recommendedTerms.badgeLabel}</div>
+        <p className="text-xs text-[var(--text-muted)] mb-3">{result.recommendedTerms.rationale}</p>
+        <div className="bg-[var(--bg-elevated)] border border-[var(--border-hairline)] p-3 relative group">
+          <button onClick={() => { navigator.clipboard.writeText(clause); onCopy(true); setTimeout(() => onCopy(false), 2000); }} className="absolute top-2 right-2 px-2 py-1 text-[9px] font-mono border border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)] opacity-0 group-hover:opacity-100 transition-opacity">{copied ? 'Copied' : 'Copy'}</button>
+          <p className="text-[11px] font-mono text-[var(--text-primary)] leading-relaxed pr-16">{clause}</p>
+        </div>
+      </div>
+      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-3">SHAP Risk Attribution</h3>
+        <div className="space-y-2">
+          {result.topShapFactors.map((f: any, i: number) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)] w-32 shrink-0 truncate">{f.factor}</span>
+              <div className="flex-1 h-2 bg-[var(--bg-elevated)] border border-[var(--border-hairline)]"><div className="h-full" style={{ width: Math.min(100, Math.abs(f.impactScore) * 15) + '%', backgroundColor: f.direction === 'RISK_INCREASE' ? 'var(--accent-danger)' : 'var(--accent-safe)', opacity: 0.8 }} /></div>
+              <span className="text-[10px] font-mono tabular-nums w-16 text-right" style={{ color: f.direction === 'RISK_INCREASE' ? 'var(--accent-danger)' : 'var(--accent-safe)' }}>{f.direction === 'RISK_INCREASE' ? '+' : '-'}{f.impactScore.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {result.integrityWarnings.length > 0 && (
+        <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-3 flex items-center gap-2"><ShieldAlert className="w-3.5 h-3.5 text-[var(--accent-warn)]" /> Input Data Audit</h3>
+          <div className="space-y-2">{result.integrityWarnings.map((w: any, i: number) => (
+            <div key={i} className={'p-3 border ' + (w.severity === 'CRITICAL' ? 'border-[var(--accent-danger)]/40 bg-[var(--accent-danger)]/5' : 'border-[var(--accent-warn)]/40 bg-[var(--accent-warn)]/5')}>
+              <div className="text-[10px] font-mono uppercase tracking-wider mb-1" style={{ color: w.severity === 'CRITICAL' ? 'var(--accent-danger)' : 'var(--accent-warn)' }}>{w.code}</div>
+              <p className="text-[11px] text-[var(--text-muted)]">{w.description}</p>
+            </div>
+          ))}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KPICell({ label, value, color, sub }: { label: string; value: string; color: string; sub: string }) {
+  return (
+    <div className="p-4">
+      <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">{label}</span>
+      <p className="text-lg font-mono font-bold tabular-nums mt-1" style={{ color }}>{value}</p>
+      <p className="text-[9px] font-mono text-[var(--text-tertiary)] mt-0.5">{sub}</p>
+    </div>
+  );
+}

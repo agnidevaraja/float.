@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowRight, SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings } from 'lucide-react';
+import { Search, ArrowRight, SlidersHorizontal, MessageSquare, TrendingUp, Shield, Table2, BarChart3, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface CommandItem {
@@ -15,12 +15,13 @@ export const CommandPalette: React.FC<{ isOpen: boolean; onClose: () => void }> 
   const [query, setQuery] = useState('');
 
   const commands: CommandItem[] = [
-    { id: 'deal', label: 'Deal & Arrival Workbench', shortcut: '1', icon: SlidersHorizontal, action: () => { navigate('/workspace/deal'); onClose(); } },
-    { id: 'runway', label: '60-Day Runway Collision Lab', shortcut: '2', icon: TrendingUp, action: () => { navigate('/workspace/runway'); onClose(); } },
-    { id: 'gst', label: 'GST & Vendor Anomaly Shield', shortcut: '3', icon: Shield, action: () => { navigate('/workspace/gst'); onClose(); } },
-    { id: 'ageing', label: 'Ageing Matrix & Batch Ledger', shortcut: '4', icon: Table2, action: () => { navigate('/workspace/ageing'); onClose(); } },
-    { id: 'benchmarks', label: 'Benchmarks & Honesty Audit', shortcut: '5', icon: BarChart3, action: () => { navigate('/workspace/benchmarks'); onClose(); } },
-    { id: 'settings', label: 'Settings & Bridge', shortcut: '6', icon: Settings, action: () => { navigate('/workspace/settings'); onClose(); } },
+    { id: 'deal', label: 'Deal Underwriting', shortcut: '1', icon: SlidersHorizontal, action: () => { navigate('/workspace/deal'); onClose(); } },
+    { id: 'copilot', label: 'AI Risk Copilot', shortcut: '2', icon: MessageSquare, action: () => { navigate('/workspace/copilot'); onClose(); } },
+    { id: 'runway', label: '60-Day Runway Collision Lab', shortcut: '3', icon: TrendingUp, action: () => { navigate('/workspace/runway'); onClose(); } },
+    { id: 'gst', label: 'GST & Vendor Anomaly Shield', shortcut: '4', icon: Shield, action: () => { navigate('/workspace/gst'); onClose(); } },
+    { id: 'ageing', label: 'Ageing Matrix & Batch Ledger', shortcut: '5', icon: Table2, action: () => { navigate('/workspace/ageing'); onClose(); } },
+    { id: 'benchmarks', label: 'Benchmarks & Honesty Audit', shortcut: '6', icon: BarChart3, action: () => { navigate('/workspace/benchmarks'); onClose(); } },
+    { id: 'settings', label: 'Settings & Bridge', shortcut: '7', icon: Settings, action: () => { navigate('/workspace/settings'); onClose(); } },
   ];
 
   const filtered = query ? commands.filter(c => c.label.toLowerCase().includes(query.toLowerCase())) : commands;
