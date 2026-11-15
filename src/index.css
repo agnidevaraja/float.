@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-canvas-deep: #090B0E;
+  --color-canvas-panel: #0F1217;
+  --color-canvas-card: #151921;
+  --color-canvas-hover: #1C222D;
+  --color-canvas-border: #222936;
+  --color-canvas-focused: #374254;
+
+  --color-brand-primary: #F1F5F9;
+  --color-brand-muted: #94A3B8;
+  --color-brand-tertiary: #64748B;
+
+  --color-status-emerald: #10B981;
+  --color-status-amber: #F59E0B;
+  --color-status-rose: #EF4444;
+  --color-status-sky: #38BDF8;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #090B0E;
+  color: #F1F5F9;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Tabular figures for financial numbers so metrics do not jump */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* Emil Kowalski active button scale with custom curve */
+button, .pressable {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease;
+}
+
+button:active:not(:disabled), .pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090B0E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222936;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374254;
+}
