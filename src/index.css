@@ -1,45 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@400;600;700;800&family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/@fontshare/card-grotesk@1.0/fonts/card-grotesk.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontshare/switzer@1.0/fonts/switzer.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontshare/general-sans@1.0/fonts/general-sans.css');
 @import "tailwindcss";
 
 @theme {
-  --color-canvas-deep: #090B0E;
-  --color-canvas-panel: #0F1217;
-  --color-canvas-card: #151921;
-  --color-canvas-hover: #1C222D;
-  --color-canvas-border: #222936;
-  --color-canvas-focused: #374254;
-
-  --color-brand-primary: #F1F5F9;
-  --color-brand-muted: #94A3B8;
-  --color-brand-tertiary: #64748B;
-
-  --color-status-emerald: #10B981;
-  --color-status-amber: #F59E0B;
-  --color-status-rose: #EF4444;
-  --color-status-sky: #38BDF8;
-
-  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --color-bg-canvas: #09090B;
+  --color-bg-surface: #111113;
+  --color-bg-elevated: #18181B;
+  --color-border-hairline: #27272A;
+  --color-border-subtle: #3F3F46;
+  --color-text-primary: #FAFAFA;
+  --color-text-muted: #A1A1AA;
+  --color-text-tertiary: #71717A;
+  --color-accent-safe: #10B981;
+  --color-accent-warn: #F59E0B;
+  --color-accent-danger: #EF4444;
+  --color-accent-info: #38BDF8;
+  --font-display: "Space Grotesk", "Geist", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Switzer", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #090B0E;
-  color: #F1F5F9;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* Tabular figures for financial numbers so metrics do not jump */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
 
-/* Emil Kowalski active button scale with custom curve */
 button, .pressable {
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease;
 }
@@ -48,21 +48,11 @@ button:active:not(:disabled), .pressable:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-canvas); }
+::-webkit-scrollbar-thumb { background: var(--border-hairline); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
 
-::-webkit-scrollbar-track {
-  background: #090B0E;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #222936;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #374254;
-}
+.font-display { font-family: var(--font-display); }
+.font-sans { font-family: var(--font-sans); }
+.font-mono { font-family: var(--font-mono); }
