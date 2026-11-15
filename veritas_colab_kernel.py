@@ -22,16 +22,20 @@ How to Run in Google Colab:
 5. Open Veritas AI -> Settings -> Section 02 (Live Model Bridge), paste the URL, and click PROBE ENDPOINT.
 """
 
+import os
 import sys
 import time
 import math
 import json
+import secrets
+import hashlib
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 try:
     from fastapi import FastAPI, HTTPException, Request
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
     import uvicorn
     from pyngrok import ngrok
     import numpy as np
@@ -45,7 +49,7 @@ except ImportError:
 app = FastAPI(
     title="Veritas AI Enterprise Risk Kernel",
     description="6-Source Global Ensemble + Custom Business Adapter + Qwen-2.5-7B Tool-Calling Agent",
-    version="3.0.0",
+    version="3.1.0",
 )
 
 # Enable CORS for browser requests from Veritas frontend
@@ -57,7 +61,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory Custom Business Adapter Store
+# ---------------------------------------------------------------------------
+# Security & Rate Limiting Controls (OWASP Hardening)
+# ---------------------------------------------------------------------------
+RATE_LIMIT_STORE: Dict[str, List[float]] = {}
+MAX_REQUESTS_PER_MINUTE = 120
+TENANT_ADAPTER_STORES: Dict[str, Dict[str, Any]] = {}
+
 CUSTOM_ADAPTER_STORE = {
     "active": False,
     "company_name": "",
@@ -65,6 +75,61 @@ CUSTOM_ADAPTER_STORE = {
     "counterparties": {},
     "records_ingested": 0,
 }
+
+def get_tenant_id(request: Request) -> str:
+    auth = request.headers.get("Authorization")
+    if auth:
+        return hashlib.sha256(auth.encode()).hexdigest()[:16]
+    client_ip = request.client.host if request.client else "default_tenant"
+    return hashlib.sha256(client_ip.encode()).hexdigest()[:16]
+
+@app.middleware("http")
+async def security_and_rate_limit_middleware(request: Request, call_next):
+    # 1. Rate Limiting Check
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    timestamps = RATE_LIMIT_STORE.get(client_ip, [])
+    timestamps = [t for t in timestamps if now - t < 60.0]
+    if len(timestamps) >= MAX_REQUESTS_PER_MINUTE:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Too Many Requests", "message": "Rate limit exceeded (120 req/min). Please back off."}
+        )
+    timestamps.append(now)
+    RATE_LIMIT_STORE[client_ip] = timestamps
+
+    # 2. Bearer Token Auth (when VERITAS_API_KEY environment variable is configured)
+    api_key_env = os.getenv("VERITAS_API_KEY", "").strip()
+    if api_key_env and request.url.path not in ["/health", "/docs", "/openapi.json"]:
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Unauthorized", "message": "Bearer API token required."}
+            )
+        token = auth.split("Bearer ")[1].strip()
+        if not secrets.compare_digest(token, api_key_env):
+            return JSONResponse(
+                status_code=403,
+                content={"error": "Forbidden", "message": "Invalid API token."}
+            )
+
+    response = await call_next(request)
+
+    # 3. Security Headers (Clickjacking, MIME Sniffing, Referrer Policy)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Log securely without disclosing internal server paths in JSON responses
+    print(f"[SECURITY_ALERT] Server exception at {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"status": "ERROR", "code": 500, "message": "Internal processing error occurred safely."}
+    )
 
 # ---------------------------------------------------------------------------
 # Data Models
@@ -140,10 +205,11 @@ def health_endpoint():
 # Helper: Ensemble Calculation Logic
 # ---------------------------------------------------------------------------
 
-def compute_ensemble_dossier(req: DealPayload) -> Dict[str, Any]:
-    # Check if custom business weights apply for this counterparty
+def compute_ensemble_dossier(req: DealPayload, tenant_id: str = "default_tenant") -> Dict[str, Any]:
+    # Check if custom business weights apply for this counterparty in this tenant's adapter
     c_name = (req.counterparty_name or "").strip()
-    custom_profile = CUSTOM_ADAPTER_STORE["counterparties"].get(c_name)
+    store = TENANT_ADAPTER_STORES.get(tenant_id, CUSTOM_ADAPTER_STORE)
+    custom_profile = store.get("counterparties", {}).get(c_name)
 
     base_late = custom_profile["past_late_percent"] if custom_profile else req.past_late_percent
     base_delay = custom_profile["avg_delay_days"] if custom_profile else req.past_avg_delay_days
@@ -300,23 +366,26 @@ def compute_ensemble_dossier(req: DealPayload) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 @app.post("/predict")
-def predict_deal(req: DealPayload):
-    return compute_ensemble_dossier(req)
+def predict_deal(req: DealPayload, request: Request):
+    tenant_id = get_tenant_id(request)
+    return compute_ensemble_dossier(req, tenant_id=tenant_id)
 
 # ---------------------------------------------------------------------------
 # 3. POST /predict/batch
 # ---------------------------------------------------------------------------
 
 @app.post("/predict/batch")
-def predict_batch(req: BatchPredictRequest):
-    return {"results": [compute_ensemble_dossier(inv) for inv in req.invoices]}
+def predict_batch(req: BatchPredictRequest, request: Request):
+    tenant_id = get_tenant_id(request)
+    return {"results": [compute_ensemble_dossier(inv, tenant_id=tenant_id) for inv in req.invoices]}
 
 # ---------------------------------------------------------------------------
 # 4. POST /import-business-data
 # ---------------------------------------------------------------------------
 
 @app.post("/import-business-data")
-def import_business_data(req: ImportBusinessDataRequest):
+def import_business_data(req: ImportBusinessDataRequest, request: Request):
+    tenant_id = get_tenant_id(request)
     counterparties = {}
     for r in req.records:
         name = str(r.get("counterparty_name") or r.get("client_name") or r.get("customer") or "Unknown").strip()
@@ -339,17 +408,24 @@ def import_business_data(req: ImportBusinessDataRequest):
             cp["past_late_percent"] = round((cp["past_late_percent"] / cp["total_deals"]) * 100.0, 1)
             cp["avg_delay_days"] = round(cp["avg_delay_days"] / cp["total_deals"], 1)
 
-    CUSTOM_ADAPTER_STORE["active"] = True
-    CUSTOM_ADAPTER_STORE["company_name"] = req.company_name
-    CUSTOM_ADAPTER_STORE["notes"] = req.notes or ""
-    CUSTOM_ADAPTER_STORE["counterparties"] = counterparties
-    CUSTOM_ADAPTER_STORE["records_ingested"] = len(req.records)
+    adapter_data = {
+        "active": True,
+        "company_name": req.company_name,
+        "notes": req.notes or "",
+        "counterparties": counterparties,
+        "records_ingested": len(req.records),
+    }
+
+    # Store in isolated tenant adapter and fallback store
+    TENANT_ADAPTER_STORES[tenant_id] = adapter_data
+    CUSTOM_ADAPTER_STORE.update(adapter_data)
 
     return {
         "status": "SUCCESS_ADAPTER_TRAINED",
         "company_name": req.company_name,
         "records_ingested": len(req.records),
         "counterparties_indexed": len(counterparties),
+        "tenant_id": tenant_id,
         "message": f"Successfully indexed {len(counterparties)} counterparties across {len(req.records)} historical invoices into the ensemble adapter.",
     }
 

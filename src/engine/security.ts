@@ -6,12 +6,12 @@ import type { DealInput } from '../types';
  */
 export function sanitizeCsvValue(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const str = String(value).trim();
+  const raw = String(value);
   // If the cell begins with dangerous spreadsheet formula triggers, prepend a single quote
-  if (/^[=+\-@|\t\r]/.test(str)) {
-    return `'${str}`;
+  if (/^[=+\-@|\t\r]/.test(raw) || /^[=+\-@|\t\r]/.test(raw.trimStart())) {
+    return `'${raw.trim()}`;
   }
-  return str;
+  return raw.trim();
 }
 
 /**

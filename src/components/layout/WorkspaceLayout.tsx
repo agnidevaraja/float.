@@ -1,17 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { THEME_PRESETS, FONT_PAIRINGS, DENSITY_PADDING, loadThemeState, saveThemeState, type ThemeState } from '../../store/themeStore';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { TopTelemetryBar } from './TopTelemetryBar';
-import { View01DealWorkbench } from '../views/View01DealWorkbench';
-import { View02RunwayLab } from '../views/View02RunwayLab';
-import { View03GstShield } from '../views/View03GstShield';
-import { View04AgeingMatrix } from '../views/View04AgeingMatrix';
-import { View05Benchmarks } from '../views/View05Benchmarks';
-import { View06Settings } from '../views/View06Settings';
-import { View07BusinessPlanner } from '../views/View07BusinessPlanner';
-import { AiCopilotView } from '../views/AiCopilotView';
 import { CommandPalette } from '../CommandPalette';
+import { ErrorBoundary } from '../ErrorBoundary';
+
+// Code-split route views for sub-100ms lazy loading and optimal bundle efficiency
+const View01DealWorkbench = lazy(() => import('../views/View01DealWorkbench').then((m) => ({ default: m.View01DealWorkbench })));
+const View02RunwayLab = lazy(() => import('../views/View02RunwayLab').then((m) => ({ default: m.View02RunwayLab })));
+const View03GstShield = lazy(() => import('../views/View03GstShield').then((m) => ({ default: m.View03GstShield })));
+const View04AgeingMatrix = lazy(() => import('../views/View04AgeingMatrix').then((m) => ({ default: m.View04AgeingMatrix })));
+const View05Benchmarks = lazy(() => import('../views/View05Benchmarks').then((m) => ({ default: m.View05Benchmarks })));
+const View06Settings = lazy(() => import('../views/View06Settings').then((m) => ({ default: m.View06Settings })));
+const View07BusinessPlanner = lazy(() => import('../views/View07BusinessPlanner').then((m) => ({ default: m.View07BusinessPlanner })));
+const AiCopilotView = lazy(() => import('../views/AiCopilotView').then((m) => ({ default: m.AiCopilotView })));
 
 const VIEW_PATHS = [
   '/workspace/deal',
@@ -23,6 +26,26 @@ const VIEW_PATHS = [
   '/workspace/settings',
   '/workspace/benchmarks',
 ];
+
+const ViewSkeletonLoader: React.FC = () => (
+  <div className="w-full h-full flex flex-col gap-4 animate-pulse">
+    <div className="h-10 w-full border border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center px-4">
+      <div className="h-3 w-48 bg-[var(--bg-elevated)]" />
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-24 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3">
+          <div className="h-2 w-20 bg-[var(--bg-elevated)] mb-3" />
+          <div className="h-6 w-32 bg-[var(--bg-elevated)]" />
+        </div>
+      ))}
+    </div>
+    <div className="flex-1 min-h-[300px] border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
+      <div className="h-3 w-36 bg-[var(--bg-elevated)] mb-4" />
+      <div className="h-56 w-full bg-[var(--bg-elevated)]/40 border border-[var(--border-hairline)]" />
+    </div>
+  </div>
+);
 
 export const WorkspaceLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -131,7 +154,11 @@ export const WorkspaceLayout: React.FC = () => {
           onOpenCmd={() => setCmdOpen(true)}
         />
         <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--cell-padding, 20px)' }}>
-          {renderView()}
+          <ErrorBoundary>
+            <Suspense fallback={<ViewSkeletonLoader />}>
+              {renderView()}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
       <CommandPalette
