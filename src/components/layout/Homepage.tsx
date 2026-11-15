@@ -67,13 +67,8 @@ export const Homepage: React.FC = () => {
               onClick={() => navigate('/workspace')}
               className="px-5 py-2.5 text-sm font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 transition-colors"
             >
-              Launch Live Workbench
-            </button>
-            <button
-              onClick={() => navigate('/workspace')}
-              className="px-5 py-2.5 text-sm font-mono uppercase tracking-wider border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:border-[var(--border-subtle)] transition-colors"
-            >
-              Load High-Risk Demo
+              Launch Risk Workbench
+              <ArrowRight className="inline w-3 h-3 ml-1.5" />
             </button>
           </div>
         </div>
