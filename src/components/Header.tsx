@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="hidden lg:flex items-center space-x-3 text-xs font-mono pl-4 border-l border-canvas-border text-brand-muted">
           <span className="flex items-center space-x-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-status-sky animate-pulse"></span>
+            <span className="w-1.5 h-1.5 rounded-[2px] bg-status-sky animate-pulse"></span>
             <span>FRED Baa Spread:</span>
             <span className="text-brand-primary">{macroSpread.toFixed(2)}%</span>
           </span>

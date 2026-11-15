@@ -1,4 +1,5 @@
 export type DueDayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+export type CurrencyMode = 'INR' | 'USD';
 
 export interface DealInput {
   invoiceAmount: number;

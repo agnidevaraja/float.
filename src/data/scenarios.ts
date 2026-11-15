@@ -89,5 +89,25 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
       currentBankBalance: 200000,
       monthlyFixedExpenses: 180000
     }
+  },
+  {
+    id: 'shell_vendor',
+    name: '5. Shell-Vendor Anomaly',
+    badge: 'ANOMALY ALERT',
+    badgeType: 'rose',
+    description: '2-month unverified counterparty, 4.5x order surge, Sunday settlement drift, high ITC exposure.',
+    params: {
+      invoiceAmount: 650000,
+      paymentTermDays: 15,
+      customerTenureMonths: 2,
+      pastLatePercent: 80,
+      orderSizeVsAvg: 4.5,
+      pastAvgDelayDays: 25,
+      dueWeekday: 'Sun',
+      macroStressMultiplier: 1.2,
+      gstRegistered: false,
+      currentBankBalance: 120000,
+      monthlyFixedExpenses: 160000
+    }
   }
 ];

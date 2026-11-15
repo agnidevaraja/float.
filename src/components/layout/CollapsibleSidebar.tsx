@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings, MessageSquare, PanelLeft } from 'lucide-react';
+import { SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings, MessageSquare, PanelLeft, Building2, Briefcase } from 'lucide-react';
+import { useWorkspace } from '../../store/workspaceStore';
 
 interface NavItem {
   id: string;
@@ -11,12 +12,13 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'deal', label: 'Deal Underwriting', icon: SlidersHorizontal, path: '/workspace/deal' },
+  { id: 'runway', label: 'Cash Flow & Runway', icon: TrendingUp, path: '/workspace/runway' },
+  { id: 'ageing', label: 'Ageing Matrix & Ledger', icon: Table2, path: '/workspace/ageing' },
+  { id: 'gst', label: 'GST Compliance & ITC', icon: Shield, path: '/workspace/gst' },
   { id: 'copilot', label: 'AI Risk Copilot', icon: MessageSquare, path: '/workspace/copilot' },
-  { id: 'runway', label: 'Runway Lab', icon: TrendingUp, path: '/workspace/runway' },
-  { id: 'gst', label: 'GST Shield', icon: Shield, path: '/workspace/gst' },
-  { id: 'ageing', label: 'Ageing Matrix', icon: Table2, path: '/workspace/ageing' },
-  { id: 'benchmarks', label: 'Benchmarks', icon: BarChart3, path: '/workspace/benchmarks' },
-  { id: 'settings', label: 'Settings', icon: Settings, path: '/workspace/settings' },
+  { id: 'business-planner', label: 'Business & Planning', icon: Briefcase, path: '/workspace/business-planner' },
+  { id: 'settings', label: 'Settings & Bridge', icon: Settings, path: '/workspace/settings' },
+  { id: 'benchmarks', label: 'Model Benchmarks', icon: BarChart3, path: '/workspace/benchmarks' },
 ];
 
 interface SidebarProps {
@@ -27,6 +29,7 @@ interface SidebarProps {
 export const CollapsibleSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { state } = useWorkspace();
 
   if (collapsed) {
     return (
@@ -75,6 +78,30 @@ export const CollapsibleSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle
           );
         })}
       </nav>
+      {/* Active Enterprise Identity Badge */}
+      {state.enterpriseProfile && (
+        <div
+          onClick={() => navigate('/workspace/settings')}
+          className="mx-2 mb-2 p-2 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] hover:border-[var(--accent-primary)] cursor-pointer transition-colors"
+          title="Click to view & edit Enterprise Profile"
+        >
+          <div className="flex items-center justify-between text-[10px] font-mono mb-1">
+            <span className="text-[var(--accent-primary)] font-semibold flex items-center gap-1">
+              <Building2 className="w-3 h-3" />
+              <span>ENTERPRISE</span>
+            </span>
+            <span className="text-[9px] text-[var(--accent-safe)] border border-[var(--border-hairline)] px-1 bg-[var(--bg-surface)]">
+              {state.enterpriseProfile.msmeCategory}
+            </span>
+          </div>
+          <div className="text-xs font-bold text-[var(--text-primary)] truncate">
+            {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName}
+          </div>
+          <div className="text-[9px] font-mono text-[var(--text-tertiary)] truncate mt-0.5">
+            CC: ₹{(state.enterpriseProfile.sanctionedCcLimit / 100000).toFixed(1)}L @ {state.enterpriseProfile.bankOdInterestRate}%
+          </div>
+        </div>
+      )}
       <div className="p-3 border-t border-[var(--border-hairline)]">
         <div className="text-[9px] font-mono text-[var(--text-tertiary)] text-center leading-relaxed">
           Trained on 360,646 records.<br />Not financial advice.

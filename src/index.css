@@ -138,17 +138,30 @@ option {
 .text-accent-safe { color: var(--accent-safe); }
 .text-accent-warn { color: var(--accent-warn); }
 .text-accent-danger { color: var(--accent-danger); }
-.bg-accent-primary/10 { background-color: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
-.bg-accent-safe/10 { background-color: color-mix(in srgb, var(--accent-safe) 10%, transparent); }
-.bg-accent-warn/10 { background-color: color-mix(in srgb, var(--accent-warn) 10%, transparent); }
-.bg-accent-danger/10 { background-color: color-mix(in srgb, var(--accent-danger) 10%, transparent); }
-.border-accent-primary/40 { border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent); }
-.border-accent-safe/40 { border-color: color-mix(in srgb, var(--accent-safe) 40%, transparent); }
-.border-accent-warn/40 { border-color: color-mix(in srgb, var(--accent-warn) 40%, transparent); }
-.border-accent-danger/40 { border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent); }
-.bg-accent-primary/15 { background-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
-.bg-accent-info/10 { background-color: color-mix(in srgb, var(--accent-info) 10%, transparent); }
-.border-accent-info/40 { border-color: color-mix(in srgb, var(--accent-info) 40%, transparent); }
-.hover:border-accent-primary:hover { border-color: var(--accent-primary); }
-.hover:text-accent-primary:hover { color: var(--accent-primary); }
+.bg-accent-primary-10 { background-color: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.bg-accent-safe-10 { background-color: color-mix(in srgb, var(--accent-safe) 10%, transparent); }
+.bg-accent-warn-10 { background-color: color-mix(in srgb, var(--accent-warn) 10%, transparent); }
+.bg-accent-danger-10 { background-color: color-mix(in srgb, var(--accent-danger) 10%, transparent); }
+.border-accent-primary-40 { border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent); }
+.border-accent-safe-40 { border-color: color-mix(in srgb, var(--accent-safe) 40%, transparent); }
+.border-accent-warn-40 { border-color: color-mix(in srgb, var(--accent-warn) 40%, transparent); }
+.border-accent-danger-40 { border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent); }
+.bg-accent-primary-15 { background-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
+.bg-accent-info-10 { background-color: color-mix(in srgb, var(--accent-info) 10%, transparent); }
+.border-accent-info-40 { border-color: color-mix(in srgb, var(--accent-info) 40%, transparent); }
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.high-contrast {
+  --border-hairline: #52525B !important;
+  --border-subtle: #71717A !important;
+  --text-muted: #D4D4D8 !important;
+  --text-tertiary: #A1A1AA !important;
+}
+
 .field-input { background-color: var(--bg-elevated); border: 1px solid var(--border-hairline); border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-primary); outline: none; width: 100%; }

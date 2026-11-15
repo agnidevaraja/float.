@@ -9,10 +9,20 @@ import { View03GstShield } from '../views/View03GstShield';
 import { View04AgeingMatrix } from '../views/View04AgeingMatrix';
 import { View05Benchmarks } from '../views/View05Benchmarks';
 import { View06Settings } from '../views/View06Settings';
+import { View07BusinessPlanner } from '../views/View07BusinessPlanner';
 import { AiCopilotView } from '../views/AiCopilotView';
 import { CommandPalette } from '../CommandPalette';
 
-const VIEW_PATHS = ['/workspace/deal', '/workspace/copilot', '/workspace/runway', '/workspace/gst', '/workspace/ageing', '/workspace/benchmarks', '/workspace/settings'];
+const VIEW_PATHS = [
+  '/workspace/deal',
+  '/workspace/runway',
+  '/workspace/ageing',
+  '/workspace/gst',
+  '/workspace/copilot',
+  '/workspace/business-planner',
+  '/workspace/settings',
+  '/workspace/benchmarks',
+];
 
 export const WorkspaceLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -42,12 +52,38 @@ export const WorkspaceLayout: React.FC = () => {
     root.style.setProperty('--font-sans', fonts.ui);
     root.style.setProperty('--font-mono', fonts.mono);
     root.style.setProperty('--cell-padding', `${DENSITY_PADDING[themeState.density]}px`);
+
+    // WCAG AA Suite bindings
+    if (themeState.reducedMotion) {
+      root.classList.add('reduced-motion');
+    } else {
+      root.classList.remove('reduced-motion');
+    }
+
+    if (themeState.highContrastBorders) {
+      root.classList.add('high-contrast');
+    } else {
+      root.classList.remove('high-contrast');
+    }
+
+    root.style.fontSize =
+      themeState.interfaceScale === '90%'
+        ? '14.4px'
+        : themeState.interfaceScale === '110%'
+          ? '17.6px'
+          : '16px';
+
+    if (themeState.showTabularCharts) {
+      root.setAttribute('data-tabular-charts', 'true');
+    } else {
+      root.removeAttribute('data-tabular-charts');
+    }
   }, [themeState]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key >= '1' && e.key <= '7') {
+      if (mod && e.key >= '1' && e.key <= '8') {
         e.preventDefault();
         const idx = parseInt(e.key) - 1;
         if (VIEW_PATHS[idx]) navigate(VIEW_PATHS[idx]);
@@ -61,13 +97,25 @@ export const WorkspaceLayout: React.FC = () => {
 
   const renderView = () => {
     switch (viewId) {
-      case 'copilot': return <AiCopilotView />;
-      case 'runway': return <View02RunwayLab />;
-      case 'gst': return <View03GstShield />;
-      case 'ageing': return <View04AgeingMatrix />;
-      case 'benchmarks': return <View05Benchmarks />;
-      case 'settings': return <View06Settings themeState={themeState} onThemeUpdate={handleThemeUpdate} />;
-      default: return <View01DealWorkbench />;
+      case 'copilot':
+      case 'chat':
+        return <AiCopilotView />;
+      case 'business-planner':
+      case 'planner':
+        return <View07BusinessPlanner />;
+      case 'runway':
+        return <View02RunwayLab />;
+      case 'ageing':
+        return <View04AgeingMatrix />;
+      case 'gst':
+      case 'gst-shield':
+        return <View03GstShield />;
+      case 'benchmarks':
+        return <View05Benchmarks />;
+      case 'settings':
+        return <View06Settings themeState={themeState} onThemeUpdate={handleThemeUpdate} />;
+      default:
+        return <View01DealWorkbench />;
     }
   };
 
@@ -75,12 +123,23 @@ export const WorkspaceLayout: React.FC = () => {
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
       <CollapsibleSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((p) => !p)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <TopTelemetryBar activeView={viewId} themeState={themeState} onThemeUpdate={handleThemeUpdate} onToggleSidebar={() => setSidebarCollapsed((p) => !p)} />
+        <TopTelemetryBar
+          activeView={viewId}
+          themeState={themeState}
+          onThemeUpdate={handleThemeUpdate}
+          onToggleSidebar={() => setSidebarCollapsed((p) => !p)}
+          onOpenCmd={() => setCmdOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--cell-padding, 20px)' }}>
           {renderView()}
         </main>
       </div>
-      <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <CommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        themeState={themeState}
+        onThemeUpdate={handleThemeUpdate}
+      />
     </div>
   );
 };

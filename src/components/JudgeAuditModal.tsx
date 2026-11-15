@@ -74,7 +74,7 @@ export const JudgeAuditModal: React.FC<JudgeAuditModalProps> = ({ isOpen, onClos
                       className={m.isChampion ? 'bg-status-emerald/5 text-brand-primary font-semibold' : 'text-brand-muted'}
                     >
                       <td className="py-2 px-3 flex items-center space-x-1.5">
-                        {m.isChampion ? <span className="w-1.5 h-1.5 rounded-full bg-status-emerald"></span> : null}
+                        {m.isChampion ? <span className="w-1.5 h-1.5 rounded-[2px] bg-status-emerald"></span> : null}
                         <span>{m.modelName}</span>
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums">{m.rocAuc.toFixed(4)}</td>

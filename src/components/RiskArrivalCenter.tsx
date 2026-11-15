@@ -118,9 +118,9 @@ export const RiskArrivalCenter: React.FC<RiskArrivalCenterProps> = ({
 
           {/* Graphical Arrival Bar */}
           <div className="relative pt-4 pb-2">
-            <div className="h-2 w-full bg-canvas-panel rounded-full relative overflow-hidden">
+            <div className="h-2 w-full bg-canvas-panel rounded-none relative overflow-hidden">
               <div
-                className={`h-full ${riskBarBg} rounded-full`}
+                className={`h-full ${riskBarBg} rounded-none`}
                 style={{
                   width: `${Math.min(100, (result.expectedArrivalDay / 90) * 100)}%`
                 }}

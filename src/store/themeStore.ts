@@ -1,11 +1,12 @@
 /**
- * Theme, Font & Density Store
- * Manages CSS custom properties and persists to localStorage
+ * Theme, Font & Accessibility Store
+ * Manages CSS custom properties, WCAG AA compliance tokens, and persists to localStorage
  */
 
 export type ThemePreset = 'obsidian' | 'slate' | 'ledger' | 'terminal';
-export type FontPairing = 'precision' | 'editorial' | 'terminal';
+export type FontPairing = 'editorial' | 'precision' | 'terminal';
 export type DensityMode = 'compact' | 'standard' | 'spacious';
+export type InterfaceScale = '90%' | '100%' | '110%';
 
 export interface ThemeState {
   theme: ThemePreset;
@@ -13,7 +14,19 @@ export interface ThemeState {
   density: DensityMode;
   showCrosshairs: boolean;
   customAccent: string | null;
+  // WCAG AA Suite
+  reducedMotion: boolean;
+  highContrastBorders: boolean;
+  interfaceScale: InterfaceScale;
+  showTabularCharts: boolean;
 }
+
+export const THEME_LABELS: Record<ThemePreset, string> = {
+  obsidian: 'Obsidian Blueprint',
+  slate: 'Institutional Slate',
+  ledger: 'Ledger Paper',
+  terminal: 'Swiss Terminal',
+};
 
 export const THEME_PRESETS: Record<ThemePreset, Record<string, string>> = {
   obsidian: {
@@ -66,8 +79,8 @@ export const THEME_PRESETS: Record<ThemePreset, Record<string, string>> = {
     '--bg-surface': '#0C0C0C',
     '--bg-elevated': '#141414',
     '--border-hairline': '#292929',
-    '--accent-primary': '#EA580C',
     '--border-subtle': '#525252',
+    '--accent-primary': '#EA580C',
     '--text-primary': '#EDEDED',
     '--text-muted': '#888888',
     '--text-tertiary': '#666666',
@@ -85,21 +98,27 @@ export const ACCENT_PRESETS: Record<ThemePreset, string> = {
   terminal: '#EA580C',
 };
 
+export const FONT_PAIRING_LABELS: Record<FontPairing, string> = {
+  editorial: 'Instrument Serif + Switzer + JetBrains Mono',
+  precision: 'Geist + General Sans + Geist Mono',
+  terminal: 'Space Grotesk + Clash Grotesk + IBM Plex Mono',
+};
+
 export const FONT_PAIRINGS: Record<FontPairing, { display: string; ui: string; mono: string }> = {
-  precision: {
-    display: 'Geist, sans-serif',
-    ui: '"Plus Jakarta Sans", system-ui, sans-serif',
-    mono: '"JetBrains Mono", ui-monospace, monospace',
-  },
   editorial: {
     display: '"Instrument Serif", Georgia, serif',
-    ui: '"DM Sans", system-ui, sans-serif',
-    mono: '"IBM Plex Mono", ui-monospace, monospace',
+    ui: 'Switzer, "DM Sans", system-ui, sans-serif',
+    mono: '"JetBrains Mono", ui-monospace, monospace',
+  },
+  precision: {
+    display: 'Geist, system-ui, sans-serif',
+    ui: '"General Sans", "Plus Jakarta Sans", system-ui, sans-serif',
+    mono: '"Geist Mono", "JetBrains Mono", monospace',
   },
   terminal: {
     display: '"Space Grotesk", system-ui, sans-serif',
-    ui: '"Syne", system-ui, sans-serif',
-    mono: '"Fira Code", ui-monospace, monospace',
+    ui: '"Clash Grotesk", Syne, system-ui, sans-serif',
+    mono: '"IBM Plex Mono", monospace',
   },
 };
 
@@ -114,14 +133,31 @@ const STORAGE_KEY = 'veritas-theme-state';
 export function loadThemeState(): ThemeState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        theme: parsed.theme || 'obsidian',
+        fontPairing: parsed.fontPairing || 'editorial',
+        density: parsed.density || 'standard',
+        showCrosshairs: !!parsed.showCrosshairs,
+        customAccent: parsed.customAccent || null,
+        reducedMotion: !!parsed.reducedMotion,
+        highContrastBorders: !!parsed.highContrastBorders,
+        interfaceScale: parsed.interfaceScale || '100%',
+        showTabularCharts: !!parsed.showTabularCharts,
+      };
+    }
   } catch { /* ignore */ }
   return {
     theme: 'obsidian',
-    fontPairing: 'precision',
+    fontPairing: 'editorial',
     density: 'standard',
     showCrosshairs: false,
     customAccent: null,
+    reducedMotion: false,
+    highContrastBorders: false,
+    interfaceScale: '100%',
+    showTabularCharts: false,
   };
 }
 

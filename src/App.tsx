@@ -16,6 +16,8 @@ export const App: React.FC = () => {
               <WorkspaceLayout />
             </ErrorBoundary>
           } />
+          <Route path="/executive-report" element={<Navigate to="/workspace/deal" replace />} />
+          <Route path="/ai-risk-copilot" element={<Navigate to="/workspace/copilot" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </WorkspaceProvider>

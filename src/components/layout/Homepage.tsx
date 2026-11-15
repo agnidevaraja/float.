@@ -56,10 +56,10 @@ export const Homepage: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-2 gap-3 mb-8">
+            <StatCard label="ROC-AUC Score" value="0.9845" />
             <StatCard label="PR-AUC Score" value="0.9896" />
-            <StatCard label="Arrival MAE" value="0.38 days" />
-            <StatCard label="Data Sources" value="4" />
-            <StatCard label="Startup FPR" value="0.00%" />
+            <StatCard label="F1-Score" value="0.9120" />
+            <StatCard label="Training Records" value="360,646" />
           </div>
 
           <div className="flex gap-3">
@@ -121,12 +121,12 @@ export const Homepage: React.FC = () => {
       <div className="max-w-[1440px] mx-auto border-x border-[var(--border-hairline)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            { num: '01', title: 'Deal & Arrival Workbench', desc: 'Pre-deal risk scoring with quantile cash arrival prediction and smart payment-term fixer' },
-            { num: '02', title: '60-Day Runway Collision Lab', desc: 'Multi-trajectory cash-flow projection with fixed commitment burn markers' },
-            { num: '03', title: 'GST & Anomaly Shield', desc: '18% ITC lockup exposure calculation with Isolation Forest shell-vendor detection' },
-            { num: '04', title: 'Ageing Matrix & Batch Ledger', desc: 'TallyPrime-style bill-by-bill ageing buckets with CSV import/export scoring' },
-            { num: '05', title: 'Benchmarks & Honesty Audit', desc: 'Colab metrics, startup fairness thresholds, and 3 documented failure cases' },
-            { num: '06', title: 'Colab Bridge & Studio', desc: 'Live API connector, payload inspector, and theme/typography customizer' },
+            { num: '01', title: 'Deal Underwriting Intake', desc: 'Probability of late payment score, explicit formula basis, and decision console' },
+            { num: '02', title: 'Ageing Matrix & Ledger', desc: '5-bracket overdue triage, template CSV upload/export, and batch AI scoring' },
+            { num: '03', title: 'GST Compliance & Section 16(2) ITC', desc: 'Statutory 180-day lockup clock, 18% penal interest, and filing calendar' },
+            { num: '04', title: 'Model Benchmarks & Honesty Audit', desc: 'Audited ROC-AUC, PR-AUC, F1 metrics, and MSME fairness check' },
+            { num: '05', title: 'AI Risk Copilot Advisory', desc: 'Grounded risk advisory answering queries directly from active deal context' },
+            { num: '06', title: 'Enterprise Settings & Bridge', desc: 'Live Colab/FastAPI probe, treasury defaults, WCAG AA suite, and Appearance Studio' },
           ].map((mod) => (
             <div
               key={mod.num}
