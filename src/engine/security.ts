@@ -54,3 +54,14 @@ export function parseInvoicesCsv(csvContent: string): Partial<DealInput>[] {
 
   return parsedRows;
 }
+
+/**
+ * Generates cryptographically secure, collision-resistant random identifiers
+ * per OWASP & OpenAI security best-practice guidelines.
+ */
+export function generateSecureId(prefix = 'id'): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}

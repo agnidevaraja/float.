@@ -1,4 +1,5 @@
 import React, { Component, type ReactNode } from 'react';
+import { generateSecureId } from '../engine/security';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -18,7 +19,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    const incidentId = `SEC-ERR-${Date.now().toString(36).toUpperCase()}`;
+    const incidentId = generateSecureId('SEC_ERR').toUpperCase();
     return { hasError: true, error, incidentId };
   }
 
