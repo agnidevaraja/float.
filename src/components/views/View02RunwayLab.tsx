@@ -16,6 +16,8 @@ interface TrajectoryPoint {
   promised: number;
   predicted: number;
   splitMilestone: number;
+  p20: number;
+  p80: number;
 }
 
 const COMMITMENTS = [
@@ -43,23 +45,32 @@ export const View02RunwayLab: React.FC<View02RunwayLabProps> = ({ input, result 
     const invoice = input.invoiceAmount;
     const points: TrajectoryPoint[] = [];
 
+    const arrivalLow = input.paymentTermDays + Math.max(0, (result.arrivalWindowLow - input.paymentTermDays) * 0.5);
+    const arrivalHigh = input.paymentTermDays + Math.max(0, (result.arrivalWindowHigh - input.paymentTermDays) * 1.5);
+
     for (let d = 0; d <= 90; d++) {
       const base = input.currentBankBalance - totalDaily * d;
       let promised = base;
       let predicted = base;
       let split = base;
+      let p20 = base;
+      let p80 = base;
 
       if (d >= input.paymentTermDays) promised += invoice;
       if (d >= result.expectedArrivalDay) predicted += invoice;
       if (d >= 0) split += invoice * 0.40;
       if (d >= 15) split += invoice * 0.30;
       if (d >= 30) split += invoice * 0.30;
+      if (d >= Math.min(arrivalLow, result.arrivalWindowLow)) p20 += invoice;
+      if (d >= Math.max(arrivalHigh, result.arrivalWindowHigh)) p80 += invoice;
 
       points.push({
         day: d,
         promised: Math.max(0, promised),
         predicted: Math.max(0, predicted),
         splitMilestone: Math.max(0, split),
+        p20: Math.max(0, p20),
+        p80: Math.max(0, p80),
       });
     }
     return points;
@@ -183,6 +194,10 @@ export const View02RunwayLab: React.FC<View02RunwayLabProps> = ({ input, result 
                   <stop offset="5%" stopColor="var(--accent-safe)" stopOpacity={0.12} />
                   <stop offset="95%" stopColor="var(--accent-safe)" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="gBand" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.06} />
+                  <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="2 4" stroke="var(--border-hairline)" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-tertiary)' }} axisLine={{ stroke: 'var(--border-hairline)' }} tickLine={false} ticks={[0, 15, 30, 45, 60, 75, 90]} />
@@ -190,10 +205,18 @@ export const View02RunwayLab: React.FC<View02RunwayLabProps> = ({ input, result 
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-mono)' }} formatter={(v: string) => <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{v}</span>} />
               <Area type="monotone" dataKey="promised" name="Promised" stroke="#71717A" strokeDasharray="5 3" fill="url(#gP)" strokeWidth={1.5} />
+              <Area type="monotone" dataKey="p80" name="P80 Band" stroke="none" fill="url(#gBand)" strokeWidth={0} />
+              <Area type="monotone" dataKey="p20" name="P20 Band" stroke="none" fill="url(#gBand)" strokeWidth={0} />
               <Area type="monotone" dataKey="predicted" name="AI Predicted" stroke="var(--accent-primary)" fill="url(#gPred)" strokeWidth={2} />
               <Area type="monotone" dataKey="splitMilestone" name="Split Milestone" stroke="var(--accent-safe)" fill="url(#gS)" strokeWidth={1.5} />
               {collisionDay !== null && (
                 <ReferenceLine x={collisionDay} stroke="var(--accent-danger)" strokeDasharray="3 3" label={collisionDayLabel} />
+              )}
+              {result.arrivalWindowLow > 0 && (
+                <ReferenceLine x={result.arrivalWindowLow} stroke="var(--accent-primary)" strokeDasharray="2 2" strokeOpacity={0.5} label={{ value: 'P20', position: 'top', fill: 'var(--accent-primary)', fontSize: 8, fontFamily: 'var(--font-mono)' }} />
+              )}
+              {result.arrivalWindowHigh < 90 && (
+                <ReferenceLine x={result.arrivalWindowHigh} stroke="var(--accent-primary)" strokeDasharray="2 2" strokeOpacity={0.5} label={{ value: 'P80', position: 'top', fill: 'var(--accent-primary)', fontSize: 8, fontFamily: 'var(--font-mono)' }} />
               )}
               <ReferenceLine y={0} stroke="var(--accent-danger)" strokeWidth={1} />
             </AreaChart>

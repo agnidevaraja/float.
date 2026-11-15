@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SlidersHorizontal, TrendingUp, Shield, Table2, BarChart3, Settings, PanelLeft } from 'lucide-react';
 
-const NAV_ITEMS = [
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { id: 'deal', label: 'Deal Workbench', icon: SlidersHorizontal, path: '/workspace/deal' },
   { id: 'runway', label: 'Runway Lab', icon: TrendingUp, path: '/workspace/runway' },
   { id: 'gst', label: 'GST Shield', icon: Shield, path: '/workspace/gst' },
@@ -11,10 +18,14 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings, path: '/workspace/settings' },
 ];
 
-export const CollapsibleSidebar: React.FC = () => {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export const CollapsibleSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
 
   if (collapsed) {
     return (
@@ -26,22 +37,12 @@ export const CollapsibleSidebar: React.FC = () => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           return (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-10 h-10 flex items-center justify-center border transition-colors ${
-                isActive ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10' : 'border-transparent hover:border-[var(--border-hairline)]'
-              }`}
-              title={item.label}
-            >
+            <button key={item.id} onClick={() => navigate(item.path)} className={`w-10 h-10 flex items-center justify-center border transition-colors ${isActive ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10' : 'border-transparent hover:border-[var(--border-hairline)]'}`} title={item.label}>
               <Icon className="w-[18px] h-[18px] text-[var(--text-muted)]" />
             </button>
           );
         })}
-        <button
-          onClick={() => setCollapsed(false)}
-          className="mt-auto w-10 h-10 flex items-center justify-center border border-[var(--border-hairline)] hover:bg-[var(--bg-elevated)]"
-        >
+        <button onClick={onToggle} className="mt-auto w-10 h-10 flex items-center justify-center border border-[var(--border-hairline)] hover:bg-[var(--bg-elevated)]">
           <PanelLeft className="w-4 h-4 text-[var(--text-tertiary)]" />
         </button>
       </aside>
@@ -57,7 +58,7 @@ export const CollapsibleSidebar: React.FC = () => {
           </div>
           <span className="text-xs font-semibold tracking-wider uppercase">Veritas</span>
         </div>
-        <button onClick={() => setCollapsed(true)} className="p-1 hover:bg-[var(--bg-elevated)]">
+        <button onClick={onToggle} className="p-1 hover:bg-[var(--bg-elevated)]">
           <PanelLeft className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
         </button>
       </div>
@@ -66,13 +67,7 @@ export const CollapsibleSidebar: React.FC = () => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           return (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors border ${
-                isActive ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
-              }`}
-            >
+            <button key={item.id} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors border ${isActive ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'}`}>
               <Icon className="w-4 h-4 shrink-0" />
               <span className="font-medium">{item.label}</span>
             </button>
