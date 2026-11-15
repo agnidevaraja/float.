@@ -34,7 +34,7 @@ export const JudgeAuditModal: React.FC<JudgeAuditModalProps> = ({ isOpen, onClos
           <div className="flex items-center space-x-2">
             <Award className="w-5 h-5 text-status-sky" />
             <h2 className="text-sm font-semibold tracking-wide text-brand-primary">
-              Veritas AI Blind Round 1 Technical Audit
+              float. — Technical &amp; Benchmark Audit
             </h2>
           </div>
           <button
@@ -103,11 +103,11 @@ export const JudgeAuditModal: React.FC<JudgeAuditModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          {/* Section 2: Data Provenance (360,646 Records) */}
+          {/* Section 2: Data Provenance (374,284 Records) */}
           <div className="pt-4 border-t border-canvas-border">
             <div className="flex items-center space-x-2 text-brand-primary font-semibold text-xs uppercase tracking-wider mb-2">
               <Database className="w-4 h-4 text-status-sky" />
-              <span>2. Multi-Dataset Provenance (360,646 Total Records)</span>
+              <span>2. 6-Source Multi-Dataset Provenance (374,284 Total Records • 59 Features)</span>
             </div>
 
             <div className="space-y-2">
@@ -190,8 +190,8 @@ export const JudgeAuditModal: React.FC<JudgeAuditModalProps> = ({ isOpen, onClos
 
           {/* Section 5: Mandatory Disclaimer */}
           <div className="pt-4 border-t border-canvas-border">
-            <div className="p-3 rounded bg-canvas-card border border-canvas-border text-[11px] text-brand-tertiary leading-relaxed">
-              <strong>Hackathon Compliance Notice:</strong> Developed exclusively for the Veritas AI International High School Hackathon (November 14-15, 2026). This system is a research prototype trained on open datasets and does not constitute certified financial underwriting or legal tax advice.
+            <div className="p-3 rounded-xl bg-canvas-card border border-canvas-border text-[11px] text-brand-tertiary leading-relaxed">
+              <strong>Compliance Notice:</strong> float. TREASURY &amp; RECEIVABLES OS is trained on 374,284 open financial records across 6 Data Sources (59 Features) and does not constitute certified financial underwriting or legal tax advice.
             </div>
           </div>
         </div>
@@ -199,7 +199,7 @@ export const JudgeAuditModal: React.FC<JudgeAuditModalProps> = ({ isOpen, onClos
         {/* Footer */}
         <div className="h-12 border-t border-canvas-border px-6 flex items-center justify-between bg-canvas-panel shrink-0">
           <span className="text-[11px] font-mono text-brand-tertiary">
-            Full Code: github.com/agnidevaraja/Veritas-AI-2026
+            float. • TREASURY &amp; RECEIVABLES OS
           </span>
           <button
             onClick={onClose}

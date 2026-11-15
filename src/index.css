@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@400;600;700;800&family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-@import url('https://cdn.jsdelivr.net/npm/@fontshare/card-grotesk@1.0/fonts/card-grotesk.css');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 
@@ -17,6 +16,8 @@
   --accent-warn: #F59E0B;
   --accent-danger: #EF4444;
   --accent-info: #38BDF8;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
   --color-bg-canvas: #09090B;
   --color-bg-surface: #111113;
   --color-bg-elevated: #18181B;
@@ -29,8 +30,8 @@
   --color-accent-warn: #F59E0B;
   --color-accent-danger: #EF4444;
   --color-accent-info: #38BDF8;
-  --font-display: "Space Grotesk", "Geist", system-ui, sans-serif;
-  --font-sans: "Plus Jakarta Sans", "Switzer", system-ui, sans-serif;
+  --font-display: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
 
@@ -48,22 +49,53 @@ html, body, #root {
   overflow-x: hidden;
 }
 
+.font-sans {
+  font-family: var(--font-sans) !important;
+}
+
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
 }
 
 button, .pressable {
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease;
+  transition: all 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  border-radius: var(--radius-control);
 }
 
 button:active:not(:disabled), .pressable:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+section.border,
+:where(div, section, article)[class*="border-[var(--border-hairline)]"][class*="bg-[var(--bg-surface)]"]:not([class*="rounded-"]):not([class*="h-12"]):not([class*="h-14"]):not([class*="h-16"]),
+:where(div, section, article)[class*="border-[var(--border-hairline)]"][class*="bg-[var(--bg-elevated)]"]:not([class*="rounded-"]):not(tr):not(thead) {
+  border-radius: var(--radius-card);
+}
+
+:where(span)[class*="border"][class*="px-"]:not([class*="rounded-"]) {
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-canvas); }
-::-webkit-scrollbar-thumb { background: var(--border-hairline); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border-hairline); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
 
 .font-display { font-family: var(--font-display) !important; }
@@ -75,7 +107,7 @@ input[type="range"] {
   appearance: none;
   height: 6px;
   background: var(--bg-elevated);
-  border-radius: 0;
+  border-radius: 9999px;
   outline: none;
   border: 1px solid var(--border-hairline);
 }
@@ -87,8 +119,13 @@ input[type="range"]::-webkit-slider-thumb {
   height: 14px;
   background: var(--accent-primary, #2563EB);
   border: 1px solid var(--border-hairline);
-  border-radius: 0;
+  border-radius: 50%;
   cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -96,7 +133,7 @@ input[type="range"]::-moz-range-thumb {
   height: 14px;
   background: var(--accent-primary, #2563EB);
   border: 1px solid var(--border-hairline);
-  border-radius: 0;
+  border-radius: 50%;
   cursor: pointer;
 }
 
@@ -104,7 +141,7 @@ select {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
   border: 1px solid var(--border-hairline);
-  border-radius: 0;
+  border-radius: var(--radius-control);
 }
 
 option {
@@ -164,4 +201,14 @@ option {
   --text-tertiary: #A1A1AA !important;
 }
 
-.field-input { background-color: var(--bg-elevated); border: 1px solid var(--border-hairline); border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-primary); outline: none; width: 100%; }
+.field-input {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  outline: none;
+  width: 100%;
+}

@@ -28,11 +28,11 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="w-7 h-7 bg-canvas-card border border-canvas-focused flex items-center justify-center rounded">
             <ShieldCheck className="w-4 h-4 text-status-sky" />
           </div>
-          <span className="text-sm font-semibold tracking-wide text-brand-primary">
-            VERITAS RISK ENGINE
+          <span className="text-sm font-display font-bold tracking-tight lowercase text-brand-primary">
+            float.
           </span>
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-canvas-card border border-canvas-border text-brand-tertiary">
-            v2.4 Multi-Source
+          <span className="text-[10px] font-sans font-semibold uppercase px-2.5 py-0.5 rounded-full bg-canvas-card border border-canvas-border text-brand-tertiary">
+            TREASURY &amp; RECEIVABLES OS
           </span>
         </div>
 

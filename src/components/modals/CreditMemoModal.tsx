@@ -46,7 +46,7 @@ export const CreditMemoModal: React.FC<CreditMemoModalProps> = ({
   };
 
   const handleCopy = () => {
-    const text = `VERITAS AI // EXECUTIVE CREDIT COMMITTEE MEMORANDUM
+    const text = `float. // EXECUTIVE CREDIT COMMITTEE MEMORANDUM
 Document Ref: ${memoRef}
 Date: ${memoDate}
 Counterparty: ${intake.clientName || 'Commercial Buyer'} (GSTIN: ${intake.gstin || 'Unregistered'})
@@ -77,7 +77,7 @@ Approved by Credit Committee.`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="w-full max-w-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="w-full max-w-3xl rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
         {/* Header Bar */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] shrink-0">
           <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ Approved by Credit Committee.`;
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] tracking-widest text-[var(--accent-primary)] font-bold uppercase">
-                  VERITAS AI RISK ENGINE // AUDIT MEMORANDUM
+                  float. TREASURY &amp; RECEIVABLES OS // AUDIT MEMORANDUM
                 </span>
                 <h1 className="text-base font-bold text-[var(--text-primary)] font-sans mt-0.5">
                   Commercial Credit Underwriting &amp; Terms Authorization
@@ -278,7 +278,7 @@ Approved by Credit Committee.`;
                 </div>
                 <div className="text-[9px] text-[var(--text-muted)]">
                   <div className="font-bold text-[var(--text-primary)]">Credit Underwriter / Risk Analyst</div>
-                  <div>Veritas AI Engine Validation Verified</div>
+                  <div>float. Engine Validation Verified</div>
                 </div>
               </div>
 
@@ -308,7 +308,7 @@ Approved by Credit Committee.`;
         {/* Footer */}
         <div className="p-3 border-t border-[var(--border-hairline)] bg-[var(--bg-elevated)] flex items-center justify-between shrink-0">
           <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-            Official credit underwriting memo generated under Veritas AI Risk Engine protocol.
+            Official credit underwriting memo generated under float. Treasury &amp; Receivables OS protocol.
           </span>
           <button
             type="button"

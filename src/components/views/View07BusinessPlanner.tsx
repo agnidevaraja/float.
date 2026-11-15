@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useWorkspace } from '../../store/workspaceStore';
 import { EChartBox } from '../charts/EChartBox';
+import { SegmentedTabs } from '../primitives/SegmentedTabs';
 import type { EChartsOption } from 'echarts';
 import {
   loadApiConfig,
@@ -65,6 +66,7 @@ const BENCHMARK_HISTORICAL_INVOICES: InvoiceRow[] = [
 export const View07BusinessPlanner: React.FC = () => {
   const { state, dispatch } = useWorkspace();
   const apiConfig = useMemo(() => loadApiConfig(), []);
+  const [activeSubTab, setActiveSubTab] = useState<'adapter' | 'planner'>('adapter');
 
   // ---------------------------------------------------------------------------
   // Panel A State: Custom Business Import
@@ -271,12 +273,15 @@ export const View07BusinessPlanner: React.FC = () => {
         textStyle: { color: '#FAFAFA' },
       },
       legend: {
+        type: 'scroll',
         data: ['Projected Cash Balance', 'Collected Revenue (Lag-Adjusted)', 'Fixed Operating Outflows'],
-        textStyle: { color: '#D4D4D8', fontSize: 10, fontFamily: 'monospace' },
-        top: 8,
-        itemGap: 16,
+        textStyle: { color: '#D4D4D8', fontSize: 11, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" },
+        top: 6,
+        left: 'center',
+        itemGap: 28,
+        padding: [4, 12],
       },
-      grid: { left: 75, right: 65, top: 52, bottom: 35, containLabel: true },
+      grid: { left: 68, right: 48, top: 68, bottom: 38, containLabel: true },
       xAxis: {
         type: 'category',
         data: months,
@@ -288,8 +293,9 @@ export const View07BusinessPlanner: React.FC = () => {
           type: 'value',
           axisLabel: {
             color: '#D4D4D8',
-            fontSize: 9,
+            fontSize: 10,
             fontFamily: 'monospace',
+            margin: 12,
             formatter: (v: number) => `₹${(v / 100000).toFixed(1)}L`,
           },
           splitLine: { lineStyle: { color: '#27272A', type: [3, 3] } },
@@ -299,13 +305,14 @@ export const View07BusinessPlanner: React.FC = () => {
         {
           name: 'Collected Revenue (Lag-Adjusted)',
           type: 'bar',
-          barWidth: 16,
+          barWidth: 24,
+          barGap: '28%',
           data: inflows,
-          itemStyle: { color: '#10B981', borderRadius: [2, 2, 0, 0] },
+          itemStyle: { color: '#10B981', borderRadius: [4, 4, 0, 0] },
           label: {
             show: true,
             position: 'insideTop',
-            distance: 5,
+            distance: 6,
             formatter: (p: any) => `₹${(p.value / 100000).toFixed(1)}L`,
             color: '#FFFFFF',
             fontSize: 9,
@@ -317,13 +324,13 @@ export const View07BusinessPlanner: React.FC = () => {
         {
           name: 'Fixed Operating Outflows',
           type: 'bar',
-          barWidth: 16,
+          barWidth: 24,
           data: outflows,
-          itemStyle: { color: '#F59E0B', borderRadius: [2, 2, 0, 0] },
+          itemStyle: { color: '#F59E0B', borderRadius: [4, 4, 0, 0] },
           label: {
             show: true,
             position: 'insideTop',
-            distance: 5,
+            distance: 6,
             formatter: (p: any) => `₹${(p.value / 100000).toFixed(1)}L`,
             color: '#FFFFFF',
             fontSize: 9,
@@ -337,15 +344,15 @@ export const View07BusinessPlanner: React.FC = () => {
           type: 'line',
           data: cashValues,
           symbol: 'circle',
-          symbolSize: 7,
-          lineStyle: { width: 2.8, color: '#06B6D4' },
+          symbolSize: 8,
+          lineStyle: { width: 3, color: '#06B6D4' },
           itemStyle: { color: '#06B6D4', borderColor: '#09090B', borderWidth: 1.5 },
-          emphasis: { focus: 'none', lineStyle: { width: 3.8 } },
+          emphasis: { focus: 'none', lineStyle: { width: 4 } },
           markLine: {
             symbol: 'none',
             silent: true,
             data: [{ yAxis: 0, lineStyle: { color: '#EF4444', type: 'dashed', width: 2 } }],
-            label: { formatter: 'ZERO CASH FLOOR', position: 'insideStartTop', color: '#EF4444', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold' },
+            label: { formatter: 'ZERO CASH FLOOR', position: 'insideStartTop', distance: 6, color: '#EF4444', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold' },
           },
         },
       ],
@@ -355,48 +362,66 @@ export const View07BusinessPlanner: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-5">
       {/* Top Banner / Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border-hairline)]">
         <div>
-          <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-            Business Data Import &amp; Working-Capital Expansion Planner
+          <h1 className="text-xl font-bold font-display text-[var(--text-primary)]">
+            Business &amp; Planning Workbench
           </h1>
-          <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-            Fine-tune custom ensemble counterparty weights from historical invoices and simulate 6-month expansion runway.
+          <p className="text-xs text-[var(--text-muted)] font-sans mt-0.5">
+            Fine-tune custom ensemble counterparty weights from historical invoices and simulate 6-month expansion runway across 6 Data Sources &amp; 59 Features.
           </p>
         </div>
         <div className="flex items-center space-x-2">
           {state.customBusinessActive && (
-            <span className="text-[10px] font-mono text-[var(--accent-safe)] border border-[var(--accent-safe)]/40 px-2 py-1 bg-[var(--bg-elevated)] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-[var(--accent-safe)]" />
+            <span className="text-[10px] font-sans font-semibold text-[var(--accent-safe)] border border-[var(--accent-safe)]/40 rounded-full px-3 py-1 bg-[var(--bg-elevated)] flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-safe)]" />
               <span>CUSTOM BUSINESS WEIGHTS ACTIVE</span>
             </span>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* =================================================================== */}
-        {/* PANEL A: CUSTOM BUSINESS DATA IMPORT & ADAPTER (6 cols) */}
-        {/* =================================================================== */}
-        <div className="lg:col-span-6 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col space-y-4">
+      {/* Full-Width Segmented Pill Toggle */}
+      <SegmentedTabs
+        activeTab={activeSubTab}
+        onChange={setActiveSubTab}
+        tabs={[
+          {
+            id: 'adapter',
+            label: '1. Custom Ledger & Model Adapter',
+            badge: `${invoiceRows.length} Invoices`,
+          },
+          {
+            id: 'planner',
+            label: '2. 6M Working-Capital & Expansion Planner',
+            badge: `${horizonMonths}M Horizon`,
+          },
+        ]}
+      />
+
+      {activeSubTab === 'adapter' && (
+        /* =================================================================== */
+        /* SUB-TAB 1: CUSTOM BUSINESS DATA IMPORT & ADAPTER (FULL WIDTH) */
+        /* =================================================================== */
+        <div className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 flex flex-col space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-mono flex items-center gap-1.5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-display flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-                <span>Panel A — Custom Business Data Import &amp; Adapter</span>
+                <span>1. Custom Ledger &amp; Model Adapter</span>
               </h2>
-              <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
-                Feeds custom historical default rates into the LightGBM/FastAPI ensemble.
+              <p className="text-[11px] text-[var(--text-muted)] font-sans mt-0.5">
+                Feeds custom historical default rates into the 6-Source Global Ensemble (374,284 records, 59 features).
               </p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setInputMode('table')}
-                className={`px-2 py-0.5 text-[10px] font-mono border transition-colors ${
+                className={`px-3 py-1 rounded-full text-[10px] font-sans font-semibold border transition-all duration-150 ${
                   inputMode === 'table'
-                    ? 'border-[var(--accent-primary)] bg-[var(--bg-elevated)] text-[var(--accent-primary)] font-bold'
-                    : 'border-[var(--border-hairline)] text-[var(--text-tertiary)]'
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]'
+                    : 'border-[var(--border-hairline)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 Table Mode
@@ -404,10 +429,10 @@ export const View07BusinessPlanner: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setInputMode('csv')}
-                className={`px-2 py-0.5 text-[10px] font-mono border transition-colors ${
+                className={`px-3 py-1 rounded-full text-[10px] font-sans font-semibold border transition-all duration-150 ${
                   inputMode === 'csv'
-                    ? 'border-[var(--accent-primary)] bg-[var(--bg-elevated)] text-[var(--accent-primary)] font-bold'
-                    : 'border-[var(--border-hairline)] text-[var(--text-tertiary)]'
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]'
+                    : 'border-[var(--border-hairline)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 CSV Upload
@@ -598,31 +623,33 @@ export const View07BusinessPlanner: React.FC = () => {
             </div>
           )}
         </div>
+      )}
 
-        {/* =================================================================== */}
-        {/* PANEL B: 6-MONTH EXPANSION & SOLVENCY PLANNER (6 cols) */}
-        {/* =================================================================== */}
-        <div className="lg:col-span-6 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col space-y-4">
+      {activeSubTab === 'planner' && (
+        /* =================================================================== */
+        /* SUB-TAB 2: 6-MONTH EXPANSION & SOLVENCY PLANNER (FULL WIDTH) */
+        /* =================================================================== */
+        <div className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 flex flex-col space-y-5">
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-mono flex items-center gap-1.5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-display flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-[var(--accent-safe)]" />
-                <span>Panel B — Working-Capital &amp; Expansion Runway Planner</span>
+                <span>2. 6M Working-Capital &amp; Expansion Planner</span>
               </h2>
-              <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
+              <p className="text-[11px] text-[var(--text-muted)] font-sans mt-0.5">
                 Simulates monthly cash runway factoring in CapEx, collection cycle lag, and payroll burn.
               </p>
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-mono">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono">
               {[3, 6, 12].map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setHorizonMonths(m)}
-                  className={`px-2 py-0.5 border transition-colors ${
+                  className={`px-3 py-1 rounded-full border transition-all duration-150 ${
                     horizonMonths === m
-                      ? 'border-[var(--accent-primary)] bg-[var(--bg-elevated)] text-[var(--accent-primary)] font-bold'
-                      : 'border-[var(--border-hairline)] text-[var(--text-tertiary)]'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-bold'
+                      : 'border-[var(--border-hairline)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {m}M
@@ -632,7 +659,7 @@ export const View07BusinessPlanner: React.FC = () => {
           </div>
 
           {/* Business Inputs */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
               <label className="text-[10px] font-mono uppercase text-[var(--text-tertiary)] block mb-1">
                 Current Cash (₹)
@@ -735,36 +762,36 @@ export const View07BusinessPlanner: React.FC = () => {
             </div>
           )}
 
-          {/* ECharts Visualization */}
-          <div className="border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-2">
-            <EChartBox option={planChartOption} height={340} title="Monthly Cash-Flow & Solvency Projections" />
+          {/* ECharts Visualization (Full Container Width) */}
+          <div className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3">
+            <EChartBox option={planChartOption} height={400} title="Monthly Cash-Flow & Solvency Projections" />
           </div>
 
           {/* Tabular Month Breakdown */}
           {planResult && (
-            <div className="border border-[var(--border-hairline)] bg-[var(--bg-canvas)] overflow-x-auto max-h-[140px]">
-              <table className="w-full text-left text-[10px] font-mono border-collapse">
-                <thead className="bg-[var(--bg-elevated)] border-b border-[var(--border-hairline)] sticky top-0 text-[var(--text-tertiary)]">
+            <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead className="bg-[var(--bg-elevated)] border-b border-[var(--border-hairline)] sticky top-0 text-[var(--text-tertiary)] font-sans">
                   <tr>
-                    <th className="p-1">Month</th>
-                    <th className="p-1 text-right">Projected Cash</th>
-                    <th className="p-1 text-right">Collected Revenue</th>
-                    <th className="p-1 text-right">Outflow</th>
-                    <th className="p-1 text-center">Solvency Status</th>
+                    <th className="p-2.5">Month</th>
+                    <th className="p-2.5 text-right">Projected Cash</th>
+                    <th className="p-2.5 text-right">Collected Revenue</th>
+                    <th className="p-2.5 text-right">Fixed Outflow</th>
+                    <th className="p-2.5 text-center">Solvency Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-hairline)]">
                   {planResult.monthly_projection.map((m) => (
                     <tr key={m.month} className="hover:bg-[var(--bg-elevated)]/50">
-                      <td className="p-1 font-semibold">Month {m.month}</td>
-                      <td className={`p-1 text-right tabular-nums ${m.projected_cash < 0 ? 'text-[var(--accent-danger)] font-bold' : ''}`}>
+                      <td className="p-2.5 font-sans font-semibold">Month {m.month}</td>
+                      <td className={`p-2.5 text-right tabular-nums ${m.projected_cash < 0 ? 'text-[var(--accent-danger)] font-bold' : ''}`}>
                         {fmt(m.projected_cash)}
                       </td>
-                      <td className="p-1 text-right tabular-nums text-[var(--accent-safe)]">{fmt(m.collected_revenue)}</td>
-                      <td className="p-1 text-right tabular-nums text-[var(--accent-warn)]">{fmt(m.fixed_outflow)}</td>
-                      <td className="p-1 text-center">
+                      <td className="p-2.5 text-right tabular-nums text-[var(--accent-safe)]">{fmt(m.collected_revenue)}</td>
+                      <td className="p-2.5 text-right tabular-nums text-[var(--accent-warn)]">{fmt(m.fixed_outflow)}</td>
+                      <td className="p-2.5 text-center">
                         <span
-                          className={`px-1.5 py-0.2 border text-[9px] ${
+                          className={`px-2.5 py-0.5 rounded-full border text-[9px] font-sans font-semibold ${
                             m.solvency_status === 'HEALTHY'
                               ? 'border-[var(--accent-safe)] text-[var(--accent-safe)]'
                               : m.solvency_status === 'TIGHT'
@@ -782,7 +809,7 @@ export const View07BusinessPlanner: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 };

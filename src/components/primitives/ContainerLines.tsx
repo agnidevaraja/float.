@@ -14,7 +14,7 @@ export const ContainerLines: React.FC<ContainerLinesProps> = ({
   return (
     <div
       className={`
-        border border-[var(--border-hairline)]
+        border border-[var(--border-hairline)] rounded-xl
         ${showCrosshair ? 'relative' : ''}
         ${className}
       `}

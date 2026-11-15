@@ -6,12 +6,27 @@ import {
   Minimize2,
   Table,
   Download,
-  ZoomIn,
   Sliders,
   Hash,
 } from 'lucide-react';
 
-const THEME_COLOR_MAP: Record<string, string> = {
+export interface ResolvedChartTheme {
+  bgCanvas: string;
+  bgSurface: string;
+  bgElevated: string;
+  borderHairline: string;
+  borderSubtle: string;
+  textPrimary: string;
+  textMuted: string;
+  textTertiary: string;
+  accentPrimary: string;
+  accentSafe: string;
+  accentWarn: string;
+  accentDanger: string;
+  accentInfo: string;
+}
+
+const DEFAULT_DARK_TOKENS: Record<string, string> = {
   '--bg-canvas': '#09090B',
   '--bg-surface': '#111113',
   '--bg-elevated': '#18181B',
@@ -21,37 +36,89 @@ const THEME_COLOR_MAP: Record<string, string> = {
   '--text-secondary': '#E4E4E7',
   '--text-muted': '#A1A1AA',
   '--text-tertiary': '#71717A',
-  '--accent-primary': '#3B82F6',
+  '--accent-primary': '#2563EB',
   '--accent-safe': '#10B981',
   '--accent-warn': '#F59E0B',
   '--accent-danger': '#EF4444',
-  '--accent-info': '#06B6D4',
+  '--accent-info': '#38BDF8',
 };
 
-function resolveColorString(val: string): string {
+function getCssVar(varName: string): string {
+  if (typeof window !== 'undefined') {
+    const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    if (computed) return computed;
+  }
+  return DEFAULT_DARK_TOKENS[varName] || '#FAFAFA';
+}
+
+export function getChartTheme(): ResolvedChartTheme {
+  return {
+    bgCanvas: getCssVar('--bg-canvas'),
+    bgSurface: getCssVar('--bg-surface'),
+    bgElevated: getCssVar('--bg-elevated'),
+    borderHairline: getCssVar('--border-hairline'),
+    borderSubtle: getCssVar('--border-subtle'),
+    textPrimary: getCssVar('--text-primary'),
+    textMuted: getCssVar('--text-muted'),
+    textTertiary: getCssVar('--text-tertiary'),
+    accentPrimary: getCssVar('--accent-primary'),
+    accentSafe: getCssVar('--accent-safe'),
+    accentWarn: getCssVar('--accent-warn'),
+    accentDanger: getCssVar('--accent-danger'),
+    accentInfo: getCssVar('--accent-info'),
+  };
+}
+
+function resolveColorString(val: string, theme: ResolvedChartTheme): string {
   if (typeof val !== 'string') return val;
   const trimmed = val.trim();
   if (trimmed.startsWith('var(')) {
     const varName = trimmed.replace(/^var\(\s*|\s*\)$/g, '').split(',')[0].trim();
-    if (typeof window !== 'undefined') {
-      const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-      if (computed && (computed.startsWith('#') || computed.startsWith('rgb'))) {
-        return computed;
-      }
-    }
-    return THEME_COLOR_MAP[varName] || '#FAFAFA';
+    return getCssVar(varName);
   }
-  return val;
+  const upper = trimmed.toUpperCase();
+  // Automatically map legacy hard-coded dark-mode tokens to active theme variables
+  switch (upper) {
+    case '#FAFAFA':
+    case '#F1F5F9':
+    case '#E4E4E7':
+    case '#EDEDED':
+      return theme.textPrimary;
+    case '#D4D4D8':
+    case '#A1A1AA':
+    case '#94A3B8':
+      return theme.textMuted;
+    case '#71717A':
+    case '#52525B':
+    case '#64748B':
+      return theme.textTertiary;
+    case '#3F3F46':
+      return theme.borderSubtle;
+    case '#27272A':
+    case '#1F1F23':
+    case '#222936':
+      return theme.borderHairline;
+    case '#18181B':
+      return theme.bgElevated;
+    case '#111113':
+    case '#0F1217':
+      return theme.bgSurface;
+    case '#09090B':
+    case '#090B0E':
+      return theme.bgCanvas;
+    default:
+      return val;
+  }
 }
 
-export function deepResolveColors(obj: any): any {
+export function deepResolveColors(obj: any, theme: ResolvedChartTheme = getChartTheme()): any {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj === 'string') return resolveColorString(obj);
-  if (Array.isArray(obj)) return obj.map(deepResolveColors);
+  if (typeof obj === 'string') return resolveColorString(obj, theme);
+  if (Array.isArray(obj)) return obj.map((item) => deepResolveColors(item, theme));
   if (typeof obj === 'object') {
     const res: any = {};
     for (const key of Object.keys(obj)) {
-      res[key] = deepResolveColors(obj[key]);
+      res[key] = deepResolveColors(obj[key], theme);
     }
     return res;
   }
@@ -78,6 +145,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
   const [showSliderZoom, setShowSliderZoom] = useState(false);
   const [showDirectNumbers, setShowDirectNumbers] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [themeRevision, setThemeRevision] = useState(0);
 
   // Height state allowing user to dynamically scale the graph anytime
   const initialHeightNum = typeof height === 'number' ? height : parseInt(String(height)) || 340;
@@ -88,17 +156,31 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
     setCurrentHeight(typeof height === 'number' ? height : parseInt(String(height)) || 340);
   }, [height]);
 
-  const resolvedOption = useMemo<EChartsOption>(() => {
-    // 1. Deep resolve any CSS variables to concrete HEX/RGB
-    const clean = deepResolveColors(option);
+  // Observe document root style/theme mutations so charts adapt immediately when switching OBSIDIAN / SLATE / LEDGER
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      setThemeRevision((r) => r + 1);
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style', 'class', 'data-theme'],
+    });
+    return () => observer.disconnect();
+  }, []);
 
-    // 2. Base defaults for institutional contrast & visibility
+  const resolvedOption = useMemo<EChartsOption>(() => {
+    const theme = getChartTheme();
+    // 1. Deep resolve any CSS variables & dark-mode hex colors to active theme values
+    const clean = deepResolveColors(option, theme);
+
+    // 2. Base defaults for institutional contrast & visibility across dark and light modes
     const base: EChartsOption = {
       animation: false,
       backgroundColor: 'transparent',
       textStyle: {
-        fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-        color: '#A1A1AA',
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+        color: theme.textMuted,
         fontSize: 11,
       },
       grid: {
@@ -110,19 +192,19 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
       },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: '#111113',
-        borderColor: '#27272A',
+        backgroundColor: theme.bgSurface,
+        borderColor: theme.borderHairline,
         borderWidth: 1,
         padding: [8, 12],
         textStyle: {
-          color: '#FAFAFA',
+          color: theme.textPrimary,
           fontSize: 11,
           fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
         },
         axisPointer: {
           type: 'line',
           lineStyle: {
-            color: '#52525B',
+            color: theme.borderSubtle,
             width: 1.5,
             type: 'dashed',
           },
@@ -144,11 +226,11 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
         type: 'slider',
         bottom: 5,
         height: 20,
-        borderColor: '#27272A',
-        backgroundColor: '#111113',
-        fillerColor: 'rgba(59, 130, 246, 0.2)',
-        handleStyle: { color: '#3B82F6', borderColor: '#27272A' },
-        textStyle: { color: '#71717A', fontFamily: 'monospace', fontSize: 9 },
+        borderColor: theme.borderHairline,
+        backgroundColor: theme.bgElevated,
+        fillerColor: 'rgba(37, 99, 235, 0.16)',
+        handleStyle: { color: theme.accentPrimary, borderColor: theme.borderHairline },
+        textStyle: { color: theme.textTertiary, fontFamily: 'monospace', fontSize: 9 },
       });
     }
 
@@ -171,10 +253,18 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
       tooltip: {
         ...base.tooltip,
         ...cleanTooltip,
+        backgroundColor: theme.bgSurface,
+        borderColor: theme.borderHairline,
+        textStyle: {
+          color: theme.textPrimary,
+          fontSize: 11,
+          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          ...(cleanTooltip.textStyle || {}),
+        },
         axisPointer: {
           type: 'line',
           lineStyle: {
-            color: '#38BDF8',
+            color: theme.accentInfo,
             width: 1.5,
             type: 'dashed',
           },
@@ -185,6 +275,20 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
         },
       },
     };
+
+    if (merged.legend) {
+      const legends = Array.isArray(merged.legend) ? merged.legend : [merged.legend];
+      const patchedLegends = legends.map((leg: any) => ({
+        ...leg,
+        textStyle: {
+          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          fontSize: 11,
+          ...(leg.textStyle || {}),
+          color: theme.textMuted,
+        },
+      }));
+      merged.legend = Array.isArray(merged.legend) ? patchedLegends : patchedLegends[0];
+    }
 
     // If axisPointer is set to shadow, ensure shadow does not darken lines
     if (merged.tooltip?.axisPointer?.type === 'shadow') {
@@ -198,35 +302,35 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
       if (!ax) return ax;
       const axes = Array.isArray(ax) ? ax : [ax];
       return axes.map((a: any) => {
-        const currentLabelColor = a.axisLabel?.color;
-        const upgradedColor =
-          !currentLabelColor ||
-          currentLabelColor === '#71717A' ||
-          currentLabelColor === '#52525B' ||
-          currentLabelColor === '#3F3F46'
-            ? '#D4D4D8'
-            : currentLabelColor;
-
         return {
           ...a,
           axisLine: {
-            lineStyle: { color: '#3F3F46' },
             ...(a.axisLine || {}),
+            lineStyle: {
+              ...(a.axisLine?.lineStyle || {}),
+              color: theme.borderSubtle,
+            },
           },
           splitLine: {
             ...(a.splitLine || {}),
             lineStyle: {
-              color: '#27272A',
               type: [3, 3],
               ...(a.splitLine?.lineStyle || {}),
+              color: theme.borderHairline,
             },
           },
           axisLabel: {
             fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
             fontSize: 10,
             ...(a.axisLabel || {}),
-            color: upgradedColor,
+            color: a.axisLabel?.color || theme.textMuted,
           },
+          nameTextStyle: a.nameTextStyle
+            ? {
+                ...a.nameTextStyle,
+                color: theme.textTertiary,
+              }
+            : undefined,
         };
       });
     };
@@ -246,7 +350,6 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
       merged.series = seriesArr.map((s: any) => {
         const updated = { ...s };
 
-        // Ensure lines stay fully visible when hovered
         updated.emphasis = {
           ...(s.emphasis || {}),
           focus: 'none',
@@ -258,13 +361,11 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
           itemStyle: { opacity: 1 },
         };
 
-        // Explicitly set blur opacity to 0.95 so unhovered lines NEVER vanish
         updated.blur = {
           lineStyle: { opacity: 0.95 },
           itemStyle: { opacity: 0.95 },
         };
 
-        // If direct numbers toggle is on, ensure labels are visible if configured
         if (showDirectNumbers && updated.label && typeof updated.label === 'object') {
           updated.label.show = true;
         } else if (!showDirectNumbers && updated.label && typeof updated.label === 'object') {
@@ -276,7 +377,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
     }
 
     return merged;
-  }, [option, showSliderZoom, showDirectNumbers]);
+  }, [option, showSliderZoom, showDirectNumbers, themeRevision]);
 
   // Extract tabular preview for accessibility table
   const tableData = useMemo(() => {
@@ -313,15 +414,16 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
   const handleExportPng = () => {
     if (!chartRef.current) return;
     try {
+      const theme = getChartTheme();
       const instance = chartRef.current.getEchartsInstance();
       const base64 = instance.getDataURL({
         type: 'png',
         pixelRatio: 2,
-        backgroundColor: '#09090B',
+        backgroundColor: theme.bgSurface,
       });
       const a = document.createElement('a');
       a.href = base64;
-      a.download = `${(title || 'veritas_chart').toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.png`;
+      a.download = `${(title || 'float_chart').toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -351,27 +453,23 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
   return (
     <>
       <div
-        className={`border border-[#27272A] bg-[#111113] flex flex-col ${className}`}
-        style={{ borderRadius: 0 }}
+        className={`border border-[var(--border-hairline)] bg-[var(--bg-surface)] rounded-xl overflow-hidden flex flex-col ${className}`}
       >
-        {/* Institutional Chart Toolbar */}
-        <div className="px-3.5 py-2 border-b border-[#27272A] bg-[#18181B] text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA] flex flex-wrap items-center justify-between gap-2">
+        {/* Chart Toolbar */}
+        <div className="px-3.5 py-2 border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-xs font-sans text-[var(--text-muted)] flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#FAFAFA]">{title || 'Data Visualization'}</span>
-            <span className="text-[9px] text-[#71717A] border border-[#27272A] px-1.5 py-0.2">
-              Scale: {currentHeight}px
-            </span>
+            <span className="font-display font-semibold text-[var(--text-primary)]">{title || 'Chart'}</span>
           </div>
 
           {allowScale && (
             <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto py-0.5">
               {/* Dynamic Height Presets & Free Scaling */}
-              <div className="flex items-center border border-[#27272A] bg-[#111113] h-6 shrink-0">
+              <div className="flex items-center border border-[var(--border-hairline)] bg-[var(--bg-surface)] rounded-lg overflow-hidden h-6 shrink-0 font-mono">
                 <button
                   type="button"
                   title="Shrink Graph Height (-50px)"
                   onClick={() => setCurrentHeight((h) => Math.max(200, h - 50))}
-                  className="px-1.5 h-full flex items-center justify-center text-[10px] text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#27272A] transition-colors whitespace-nowrap"
+                  className="px-1.5 h-full flex items-center justify-center text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors whitespace-nowrap rounded-none"
                 >
                   -
                 </button>
@@ -379,10 +477,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                   type="button"
                   title="Compact View (260px)"
                   onClick={() => setCurrentHeight(260)}
-                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-l border-[#27272A] transition-colors whitespace-nowrap ${
+                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-l border-[var(--border-hairline)] transition-colors whitespace-nowrap rounded-none ${
                     currentHeight === 260
-                      ? 'bg-[#27272A] text-[#FAFAFA] font-bold'
-                      : 'text-[#A1A1AA] hover:text-[#FAFAFA]'
+                      ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-bold'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   260
@@ -391,10 +489,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                   type="button"
                   title="Standard View (360px)"
                   onClick={() => setCurrentHeight(360)}
-                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-l border-r border-[#27272A] transition-colors whitespace-nowrap ${
+                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-l border-r border-[var(--border-hairline)] transition-colors whitespace-nowrap rounded-none ${
                     currentHeight === 360
-                      ? 'bg-[#27272A] text-[#FAFAFA] font-bold'
-                      : 'text-[#A1A1AA] hover:text-[#FAFAFA]'
+                      ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-bold'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   360
@@ -403,10 +501,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                   type="button"
                   title="Expanded View (480px)"
                   onClick={() => setCurrentHeight(480)}
-                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-r border-[#27272A] transition-colors whitespace-nowrap ${
+                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-r border-[var(--border-hairline)] transition-colors whitespace-nowrap rounded-none ${
                     currentHeight === 480
-                      ? 'bg-[#27272A] text-[#FAFAFA] font-bold'
-                      : 'text-[#A1A1AA] hover:text-[#FAFAFA]'
+                      ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-bold'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   480
@@ -415,10 +513,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                   type="button"
                   title="Deep Inspection (640px)"
                   onClick={() => setCurrentHeight(640)}
-                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-r border-[#27272A] transition-colors whitespace-nowrap ${
+                  className={`px-1.5 h-full flex items-center justify-center text-[9px] border-r border-[var(--border-hairline)] transition-colors whitespace-nowrap rounded-none ${
                     currentHeight === 640
-                      ? 'bg-[#27272A] text-[#FAFAFA] font-bold'
-                      : 'text-[#A1A1AA] hover:text-[#FAFAFA]'
+                      ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-bold'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   640
@@ -427,7 +525,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                   type="button"
                   title="Enlarge Graph Height (+50px)"
                   onClick={() => setCurrentHeight((h) => Math.min(900, h + 50))}
-                  className="px-1.5 h-full flex items-center justify-center text-[10px] text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#27272A] transition-colors whitespace-nowrap"
+                  className="px-1.5 h-full flex items-center justify-center text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors whitespace-nowrap rounded-none"
                 >
                   +
                 </button>
@@ -438,10 +536,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                 type="button"
                 onClick={() => setShowDirectNumbers(!showDirectNumbers)}
                 title={showDirectNumbers ? 'Hide Direct Numbers' : 'Show Direct Numbers'}
-                className={`h-6 px-2 border transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
+                className={`h-6 px-2.5 rounded-lg border transition-all duration-150 flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
                   showDirectNumbers
-                    ? 'border-[#3B82F6] bg-[#3B82F6]/15 text-[#3B82F6] font-bold'
-                    : 'border-[#27272A] bg-[#111113] text-[#A1A1AA] hover:text-[#FAFAFA]'
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-semibold'
+                    : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <Hash className="w-3 h-3 shrink-0" />
@@ -453,10 +551,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                 type="button"
                 onClick={() => setShowSliderZoom(!showSliderZoom)}
                 title="Toggle Range Zoom Slider"
-                className={`h-6 px-2 border transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
+                className={`h-6 px-2.5 rounded-lg border transition-all duration-150 flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
                   showSliderZoom
-                    ? 'border-[#3B82F6] bg-[#3B82F6]/15 text-[#3B82F6] font-bold'
-                    : 'border-[#27272A] bg-[#111113] text-[#A1A1AA] hover:text-[#FAFAFA]'
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-semibold'
+                    : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <Sliders className="w-3 h-3 shrink-0" />
@@ -468,10 +566,10 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                 type="button"
                 onClick={() => setShowTabular(!showTabular)}
                 title="Toggle Tabular Data"
-                className={`h-6 px-2 border transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
+                className={`h-6 px-2.5 rounded-lg border transition-all duration-150 flex items-center gap-1 shrink-0 whitespace-nowrap text-[10px] ${
                   showTabular
-                    ? 'border-[#10B981] bg-[#10B981]/15 text-[#10B981] font-bold'
-                    : 'border-[#27272A] bg-[#111113] text-[#A1A1AA] hover:text-[#FAFAFA]'
+                    ? 'border-[var(--accent-safe)] bg-[var(--accent-safe)]/15 text-[var(--accent-safe)] font-semibold'
+                    : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <Table className="w-3 h-3 shrink-0" />
@@ -483,7 +581,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                 type="button"
                 onClick={handleExportPng}
                 title="Export Chart Image (PNG)"
-                className="h-6 px-2 border border-[#27272A] bg-[#111113] text-[#A1A1AA] hover:text-[#FAFAFA] transition-colors shrink-0 flex items-center justify-center"
+                className="h-6 px-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all duration-150 shrink-0 flex items-center justify-center"
               >
                 <Download className="w-3 h-3 shrink-0" />
               </button>
@@ -493,7 +591,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
                 type="button"
                 onClick={() => setIsFullscreen(true)}
                 title="Expand Fullscreen"
-                className="h-6 px-2 border border-[#27272A] bg-[#111113] text-[#A1A1AA] hover:text-[#FAFAFA] transition-colors shrink-0 flex items-center justify-center"
+                className="h-6 px-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all duration-150 shrink-0 flex items-center justify-center"
               >
                 <Maximize2 className="w-3 h-3 shrink-0" />
               </button>
@@ -506,12 +604,12 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
 
         {/* Accessible Table */}
         {showTabular && tableData && (
-          <div className="border-t border-[#27272A] bg-[#18181B] p-3 max-h-56 overflow-y-auto">
-            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#27272A]">
-              <span className="text-[9px] font-mono uppercase tracking-wider text-[#3B82F6] font-semibold">
+          <div className="border-t border-[var(--border-hairline)] bg-[var(--bg-elevated)] p-3 max-h-56 overflow-y-auto">
+            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[var(--border-hairline)]">
+              <span className="text-[9px] font-sans uppercase tracking-wider text-[var(--accent-primary)] font-semibold">
                 Tabular Data Breakdown
               </span>
-              <span className="text-[9px] font-mono text-[#71717A]">
+              <span className="text-[9px] font-mono text-[var(--text-tertiary)]">
                 Showing {tableData.rows.length} rows
               </span>
             </div>
@@ -521,19 +619,19 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
               aria-label="Visualized Chart Data Points"
             >
               <thead>
-                <tr className="border-b border-[#27272A] text-[#71717A] bg-[#09090B]">
+                <tr className="border-b border-[var(--border-hairline)] text-[var(--text-tertiary)] bg-[var(--bg-canvas)]">
                   {tableData.headers.map((h, i) => (
-                    <th key={i} className="py-1 px-2.5 font-medium">
+                    <th key={i} className="py-1 px-2.5 font-sans font-medium">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#27272A]">
+              <tbody className="divide-y divide-[var(--border-hairline)]">
                 {tableData.rows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-[#111113]">
+                  <tr key={idx} className="hover:bg-[var(--bg-surface)]">
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="py-1 px-2.5 tabular-nums text-[#FAFAFA]">
+                      <td key={cIdx} className="py-1 px-2.5 tabular-nums text-[var(--text-primary)]">
                         {typeof cell === 'number' ? cell.toLocaleString('en-IN') : cell}
                       </td>
                     ))}
@@ -547,13 +645,13 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
 
       {/* Fullscreen High-Resolution Inspection Modal */}
       {isFullscreen && (
-        <div className="fixed inset-0 z-50 bg-[#09090B]/95 backdrop-blur-md flex flex-col p-6 overflow-hidden">
-          <div className="flex items-center justify-between pb-3 border-b border-[#27272A] mb-4">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-canvas)]/95 backdrop-blur-md flex flex-col p-6 overflow-hidden">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border-hairline)] mb-4">
             <div>
-              <div className="text-sm font-mono font-bold text-[#FAFAFA] uppercase">
+              <div className="text-sm font-display font-bold text-[var(--text-primary)] uppercase">
                 {title || 'Expanded Chart Inspection Mode'}
               </div>
-              <div className="text-[10px] font-mono text-[#71717A] mt-0.5">
+              <div className="text-[10px] font-sans text-[var(--text-tertiary)] mt-0.5">
                 Full-screen data visualization with mouse-wheel scaling and range navigation
               </div>
             </div>
@@ -561,7 +659,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
               <button
                 type="button"
                 onClick={handleExportPng}
-                className="px-3 py-1.5 text-xs font-mono border border-[#27272A] bg-[#18181B] text-[#FAFAFA] hover:border-[#3B82F6] flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:border-[var(--accent-primary)] flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export PNG
@@ -569,7 +667,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFullscreen(false)}
-                className="px-3 py-1.5 text-xs font-mono border border-[#27272A] bg-[#18181B] text-[#FAFAFA] hover:border-[#EF4444] hover:text-[#EF4444] flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:border-[var(--accent-danger)] hover:text-[var(--accent-danger)] flex items-center gap-1.5"
               >
                 <Minimize2 className="w-3.5 h-3.5" />
                 Close Fullscreen
@@ -577,7 +675,7 @@ export const EChartBox: React.FC<EChartBoxProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 bg-[#111113] border border-[#27272A] p-4 flex items-center justify-center">
+          <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl p-4 flex items-center justify-center">
             {chartElement}
           </div>
         </div>

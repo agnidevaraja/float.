@@ -5,12 +5,20 @@
 
 export type ThemePreset = 'obsidian' | 'slate' | 'ledger' | 'terminal';
 export type FontPairing = 'editorial' | 'precision' | 'terminal';
+export type FontFamilyId =
+  | 'inter'
+  | 'jakarta'
+  | 'dmsans'
+  | 'ibmplex'
+  | 'spacegrotesk'
+  | 'jetbrains';
 export type DensityMode = 'compact' | 'standard' | 'spacious';
 export type InterfaceScale = '90%' | '100%' | '110%';
 
 export interface ThemeState {
   theme: ThemePreset;
   fontPairing: FontPairing;
+  fontFamily?: FontFamilyId;
   density: DensityMode;
   showCrosshairs: boolean;
   customAccent: string | null;
@@ -20,6 +28,59 @@ export interface ThemeState {
   interfaceScale: InterfaceScale;
   showTabularCharts: boolean;
 }
+
+export interface FontFamilyOption {
+  id: FontFamilyId;
+  name: string;
+  subtitle: string;
+  cssStack: string;
+  sample: string;
+}
+
+export const FONT_FAMILY_OPTIONS: FontFamilyOption[] = [
+  {
+    id: 'inter',
+    name: 'Inter',
+    subtitle: 'Default Clean Sans',
+    cssStack: '"Inter", system-ui, -apple-system, sans-serif',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+  {
+    id: 'jakarta',
+    name: 'Plus Jakarta Sans',
+    subtitle: 'Modern Geometric',
+    cssStack: '"Plus Jakarta Sans", system-ui, sans-serif',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+  {
+    id: 'dmsans',
+    name: 'DM Sans',
+    subtitle: 'High-Legibility SaaS',
+    cssStack: '"DM Sans", system-ui, sans-serif',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+  {
+    id: 'ibmplex',
+    name: 'IBM Plex Sans',
+    subtitle: 'Institutional Banking',
+    cssStack: '"IBM Plex Sans", system-ui, sans-serif',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+  {
+    id: 'spacegrotesk',
+    name: 'Space Grotesk',
+    subtitle: 'Technical Editorial',
+    cssStack: '"Space Grotesk", system-ui, sans-serif',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+  {
+    id: 'jetbrains',
+    name: 'JetBrains Mono',
+    subtitle: 'Quant Terminal',
+    cssStack: '"JetBrains Mono", ui-monospace, monospace',
+    sample: 'Net-30 invoice risk & treasury cash flow clarity.',
+  },
+];
 
 export const THEME_LABELS: Record<ThemePreset, string> = {
   obsidian: 'Obsidian Blueprint',
@@ -137,7 +198,8 @@ export function loadThemeState(): ThemeState {
       const parsed = JSON.parse(raw);
       return {
         theme: parsed.theme || 'obsidian',
-        fontPairing: parsed.fontPairing || 'editorial',
+        fontPairing: parsed.fontPairing || 'precision',
+        fontFamily: parsed.fontFamily || 'inter',
         density: parsed.density || 'standard',
         showCrosshairs: !!parsed.showCrosshairs,
         customAccent: parsed.customAccent || null,
@@ -150,7 +212,8 @@ export function loadThemeState(): ThemeState {
   } catch { /* ignore */ }
   return {
     theme: 'obsidian',
-    fontPairing: 'editorial',
+    fontPairing: 'precision',
+    fontFamily: 'inter',
     density: 'standard',
     showCrosshairs: false,
     customAccent: null,

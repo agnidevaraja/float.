@@ -20,10 +20,10 @@ export const CLASSIFICATION_BENCHMARKS: BenchmarkMetric[] = [
     f1Score: 0.7838
   },
   {
-    modelName: 'LightGBM Multi-Dataset Risk Engine (Ours)',
+    modelName: 'float. 6-Source Global Ensemble (Ours)',
     rocAuc: 0.9845,
-    prAuc: 0.9841,
-    f1Score: 0.9584,
+    prAuc: 0.9896,
+    f1Score: 0.9120,
     isChampion: true
   }
 ];
@@ -39,7 +39,13 @@ export const DATASET_PROVENANCE = [
     name: 'B2B Accounts Receivable & Payment Delay',
     source: 'Kaggle (sonalisingh1411)',
     records: 45839,
-    role: 'Primary invoice delay history & chronological behavioral features'
+    role: 'Primary invoice delay history & chronological behavioral features (59 engineered features)'
+  },
+  {
+    name: 'Corporate Bankruptcy & Solvency Prediction',
+    source: 'Kaggle (fedesoriano / Taiwan Economic Journal)',
+    records: 6819,
+    role: 'Corporate balance-sheet solvency & distress probability calibration'
   },
   {
     name: 'Default of Credit Card Clients',
@@ -48,10 +54,16 @@ export const DATASET_PROVENANCE = [
     role: 'Secondary behavioral credit default likelihood calibration'
   },
   {
-    name: 'Corporate Bond Spread & Loan Delinquency',
-    source: 'Federal Reserve Bank of St. Louis (FRED)',
-    records: 4000,
-    role: 'Live macroeconomic stress indicators (BAA10Y & DRBLACBS)'
+    name: 'Corporate Bond Spread & Loan Delinquency Series',
+    source: 'Federal Reserve Bank of St. Louis (FRED: BAA10Y, DRBLACBS, DFF)',
+    records: 5500,
+    role: 'Live macroeconomic stress indicators & inter-corporate credit spread velocity'
+  },
+  {
+    name: 'Private Sector Credit to GDP Macro Indicator',
+    source: 'World Bank Open Data API (FS.AST.PRVT.GD.ZS)',
+    records: 1319,
+    role: 'Sovereign & domestic private credit liquidity cycle normalization'
   },
   {
     name: 'Financial Transaction Anomaly & Fraud Dataset',

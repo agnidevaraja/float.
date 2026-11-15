@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface TelemetryStepperProps {
   activeStep: number; // 0-3
-  
 }
 
 const STEPS = ['AUDIT', 'ENSEMBLE', 'ARRIVAL', 'RUNWAY'];
@@ -33,7 +32,7 @@ export const TelemetryStepper: React.FC<TelemetryStepperProps> = ({ activeStep }
             <div className="flex items-center gap-1.5 shrink-0">
               <span
                 className={`
-                  text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 border
+                  text-[10px] font-sans font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full border
                   transition-all duration-150
                   ${isActive
                     ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]'
@@ -44,7 +43,8 @@ export const TelemetryStepper: React.FC<TelemetryStepperProps> = ({ activeStep }
                   ${animating && isActive ? 'animate-pulse' : ''}
                 `}
               >
-                {String(i + 1).padStart(2, '0')} {step}
+                <span className="font-mono mr-1">{String(i + 1).padStart(2, '0')}</span>
+                {step}
               </span>
             </div>
           </React.Fragment>

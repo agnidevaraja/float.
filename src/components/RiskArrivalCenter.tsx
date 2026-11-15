@@ -61,7 +61,7 @@ export const RiskArrivalCenter: React.FC<RiskArrivalCenterProps> = ({
         {/* Multi-Dataset Model Breakdown */}
         <div className="pt-3 border-t border-canvas-border">
           <div className="text-[10px] font-mono uppercase text-brand-tertiary mb-2">
-            Multi-Dataset Ensemble Contributions (360,646 Total Records)
+            6-Source Ensemble Contributions (374,284 Total Records • 59 Features)
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="p-2 rounded bg-canvas-card border border-canvas-border">
@@ -118,9 +118,9 @@ export const RiskArrivalCenter: React.FC<RiskArrivalCenterProps> = ({
 
           {/* Graphical Arrival Bar */}
           <div className="relative pt-4 pb-2">
-            <div className="h-2 w-full bg-canvas-panel rounded-none relative overflow-hidden">
+            <div className="h-2 w-full bg-canvas-panel rounded-full relative overflow-hidden">
               <div
-                className={`h-full ${riskBarBg} rounded-none`}
+                className={`h-full ${riskBarBg} rounded-full`}
                 style={{
                   width: `${Math.min(100, (result.expectedArrivalDay / 90) * 100)}%`
                 }}

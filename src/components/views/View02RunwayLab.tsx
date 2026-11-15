@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useWorkspace } from '../../store/workspaceStore';
 import { EChartBox } from '../charts/EChartBox';
+import { SegmentedTabs } from '../primitives/SegmentedTabs';
 import type { EChartsOption } from 'echarts';
 import {
   TrendingUp,
@@ -146,6 +147,7 @@ export const View02RunwayLab: React.FC = () => {
 
   // Interactive Payment Delay Stress Slider State (0 to 45 Days)
   const [delayStressShockDays, setDelayStressShockDays] = useState<number>(0);
+  const [activeSubTab, setActiveSubTab] = useState<'trajectory' | 'discount' | 'dispatch'>('trajectory');
 
   const rawInflowDay =
     scenarioMode === 'promised' ? promisedDay : scenarioMode === 'predicted' ? predictedDay : shockDay;
@@ -363,7 +365,7 @@ export const View02RunwayLab: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `veritas_dynamic_discount_memo_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `float_dynamic_discount_memo_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -511,9 +513,10 @@ export const View02RunwayLab: React.FC = () => {
               lineStyle: { color: '#F59E0B', type: 'dashed', width: 1.5 },
               label: {
                 formatter: `1-Mo Reserve Buffer (₹${(safeBufferLine / 100000).toFixed(1)}L)`,
-                color: '#FCD34D',
+                color: '#F59E0B',
                 fontSize: 10,
                 position: 'insideStartTop',
+                distance: 6,
                 fontFamily: 'monospace',
                 fontWeight: 'bold',
               },
@@ -523,9 +526,10 @@ export const View02RunwayLab: React.FC = () => {
               lineStyle: { color: '#EF4444', type: 'solid', width: 2 },
               label: {
                 formatter: 'Zero Solvency Threshold (₹0)',
-                color: '#F87171',
+                color: '#EF4444',
                 fontSize: 10,
-                position: 'insideStartBottom',
+                position: 'insideEndTop',
+                distance: 6,
                 fontFamily: 'monospace',
                 fontWeight: 'bold',
               },
@@ -586,7 +590,7 @@ export const View02RunwayLab: React.FC = () => {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 75, right: 65, top: 48, bottom: 35, containLabel: true },
+      grid: { left: 75, right: 65, top: 48, bottom: 42, containLabel: true },
       legend: {
         show: true,
         top: 8,
@@ -639,10 +643,13 @@ export const View02RunwayLab: React.FC = () => {
           fontSize: 10,
           fontFamily: 'monospace',
           interval: 5,
+          margin: 12,
+          hideOverlap: true,
         },
       },
       yAxis: {
         type: 'value',
+        min: (val: { min: number }) => Math.min(-40000, Math.floor(val.min / 50000) * 50000),
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1F1F23', type: [3, 3] } },
@@ -680,7 +687,7 @@ export const View02RunwayLab: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `veritas_rtgs_batch_dispatch_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `float_rtgs_batch_dispatch_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -699,8 +706,33 @@ export const View02RunwayLab: React.FC = () => {
         </p>
       </div>
 
+      {/* 3-Pill Segmented Sub-Navigation */}
+      <SegmentedTabs
+        activeTab={activeSubTab}
+        onChange={setActiveSubTab}
+        tabs={[
+          {
+            id: 'trajectory',
+            label: '1. Trajectory & Collision Lab',
+            badge: minCashPoint < 0 ? 'DEFICIT' : `${daysOfRunway >= 60 ? '60+d' : `${daysOfRunway}d`}`,
+          },
+          {
+            id: 'discount',
+            label: '2. Early-Settlement Discount Solver',
+            badge: `${discountSolverResult.optimal_discount_pct}% OPTIMAL`,
+          },
+          {
+            id: 'dispatch',
+            label: '3. AP Vendor Dispatch & Commitments',
+            badge: `${apBills.length} BILLS`,
+          },
+        ]}
+      />
+
+      {activeSubTab === 'trajectory' && (
+        <div className="space-y-6">
       {/* Institutional Explainer */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex items-start gap-3 text-xs font-mono">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex items-start gap-3 text-xs font-mono">
         <Info className="w-5 h-5 text-[var(--accent-primary)] shrink-0 mt-0.5" />
         <div className="space-y-0.5">
           <span className="font-bold text-[var(--text-primary)] uppercase">
@@ -885,46 +917,43 @@ export const View02RunwayLab: React.FC = () => {
       )}
 
       {/* Expanded Trajectory Chart Card */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[var(--border-hairline)] gap-2">
           <div>
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
+            <span className="text-xs font-sans font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-[var(--accent-primary)]" />
-              60-Day Working Capital Trajectory (Institutional High-Contrast View)
+              60-Day Working Capital Trajectory
             </span>
-            <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-              Step-function daily bank balance projection modeling scheduled payroll, rent, TDS, and GST drains vs collection inflows.
+            <p className="text-xs font-sans text-[var(--text-muted)] mt-0.5">
+              Daily bank balance projection comparing scheduled salaries, rent, TDS, and GST payments against expected customer collections.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-[var(--accent-warn)] border border-[var(--accent-warn)]/40 px-2 py-0.5">
-              1-Mo Buffer: {fmt(safeBufferLine)}
-            </span>
             <button
               type="button"
               onClick={() => setOverlayDiscountTrajectory(!overlayDiscountTrajectory)}
-              className={`px-2.5 py-1 text-[10px] font-mono border transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium border transition-colors flex items-center gap-1.5 ${
                 overlayDiscountTrajectory
-                  ? 'border-[#06B6D4] bg-[#06B6D4]/15 text-[#06B6D4] font-bold'
+                  ? 'border-[#06B6D4] bg-[#06B6D4]/15 text-[#06B6D4] font-semibold'
                   : 'border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <span className={`w-2 h-2 ${overlayDiscountTrajectory ? 'bg-[#06B6D4]' : 'border border-[var(--text-muted)]'}`} />
+              <span className={`w-2 h-2 rounded-full ${overlayDiscountTrajectory ? 'bg-[#06B6D4]' : 'border border-[var(--text-muted)]'}`} />
               {overlayDiscountTrajectory ? '5-Day Discount Overlay Active' : 'Overlay 5-Day Discount'}
             </button>
           </div>
         </div>
 
         {/* Real-time Delay Stress Simulation Slider */}
-        <div className="mx-3 mt-3 p-2.5 bg-[#18181B] border border-[#27272A] flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono">
+        <div className="mx-3 mt-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-hairline)] flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-[#38BDF8] font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-[var(--accent-primary)] font-bold uppercase tracking-wider flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5" /> Delay Stress Shock:
             </span>
-            <span className="text-[#FAFAFA] font-bold tabular-nums bg-[#27272A] px-2 py-0.5 border border-[#3F3F46]">
+            <span className="text-[var(--text-primary)] font-bold tabular-nums bg-[var(--bg-canvas)] px-2.5 py-0.5 rounded-full border border-[var(--border-hairline)]">
               +{delayStressShockDays} Days
             </span>
-            <span className="text-[#A1A1AA]">
+            <span className="text-[var(--text-muted)]">
               (Expected Inflow Shifts to Day {activeInflowDay})
             </span>
           </div>
@@ -937,18 +966,18 @@ export const View02RunwayLab: React.FC = () => {
               step={1}
               value={delayStressShockDays}
               onChange={(e) => setDelayStressShockDays(Number(e.target.value))}
-              className="w-36 sm:w-48 accent-[#38BDF8] cursor-pointer"
+              className="w-36 sm:w-48 accent-[var(--accent-primary)] cursor-pointer"
             />
-            <div className="flex items-center border border-[#27272A] bg-[#111113]">
+            <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-hairline)] bg-[var(--bg-canvas)]">
               {[0, 7, 15, 30, 45].map((d) => (
                 <button
                   key={d}
                   type="button"
                   onClick={() => setDelayStressShockDays(d)}
-                  className={`px-1.5 py-0.5 text-[9px] transition-colors border-r last:border-r-0 border-[#27272A] ${
+                  className={`px-2 py-1 text-[9px] transition-colors border-r last:border-r-0 border-[var(--border-hairline)] ${
                     delayStressShockDays === d
-                      ? 'bg-[#38BDF8] text-[#09090B] font-bold'
-                      : 'text-[#A1A1AA] hover:text-[#FAFAFA]'
+                      ? 'bg-[var(--accent-primary)] text-white font-bold'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   +{d}d
@@ -963,48 +992,49 @@ export const View02RunwayLab: React.FC = () => {
         </div>
 
         {/* Chart Sub-Legend & Quick Stat Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[var(--border-hairline)] text-[10px] font-mono">
-          <div className="flex items-center justify-between p-2 bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
-            <span className="text-[#A1A1AA] flex items-center gap-1.5">
-              <span className={`w-3 h-1 ${minCashPoint < 0 ? 'bg-[#F43F5E]' : 'bg-[#38BDF8]'}`} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--border-hairline)] text-[10px] font-mono">
+          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-hairline)]">
+            <span className="text-[var(--text-muted)] flex items-center gap-2">
+              <span className={`w-3 h-1 rounded-full shrink-0 ${minCashPoint < 0 ? 'bg-[var(--accent-danger)]' : 'bg-[var(--accent-primary)]'}`} />
               Baseline Trajectory (No Action):
             </span>
-            <span className={`font-bold tabular-nums ${minCashPoint < 0 ? 'text-[#F43F5E]' : 'text-[#38BDF8]'}`}>
+            <span
+              className={`font-bold tabular-nums whitespace-nowrap no-underline decoration-transparent ${
+                minCashPoint < 0 ? 'text-[var(--accent-danger)]' : 'text-[var(--accent-primary)]'
+              }`}
+            >
               Min {fmt(minCashPoint)} on Day {minCashDay}
             </span>
           </div>
 
-          <div className="flex items-center justify-between p-2 bg-[#09090B] border border-[#10B981]/40">
-            <span className="text-[#10B981] flex items-center gap-1.5">
-              <span className="w-3 h-1 bg-[#10B981]" />
+          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--accent-safe)]/5 border border-[var(--accent-safe)]/40">
+            <span className="text-[var(--accent-safe)] flex items-center gap-2">
+              <span className="w-3 h-1 rounded-full bg-[var(--accent-safe)] shrink-0" />
               With 5-Day Dynamic Discounting ({discountSolverResult.optimal_discount_pct}%):
             </span>
-            <span className="font-bold tabular-nums text-[#10B981]">
+            <span className="font-bold tabular-nums whitespace-nowrap no-underline decoration-transparent text-[var(--accent-safe)]">
               +{fmt(discountSolverResult.immediate_cash_inflow)} on Day 5 (Solvent)
             </span>
           </div>
         </div>
       </div>
+        </div>
+      )}
 
       {/* Optimal Dynamic Discounting Calculator Module */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[var(--border-hairline)] gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <Percent className="w-4 h-4 text-[#06B6D4]" />
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                Optimal Dynamic Discounting Calculator: MSME Overdraft Arbitrage Engine
-              </span>
-            </div>
-            <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-              When Runway Lab detects a cash collision before scheduled payroll, the solver calculates the exact early-payment discount (0.5%–2.5%) to offer a low-risk buyer to settle within 5 days, comparing that discount cost against the annualized cost of a 16%–18% MSME bank overdraft.
-            </p>
-          </div>
+      {activeSubTab === 'discount' && (
+        <div className="space-y-6">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-5">
+        <div className="pb-3 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 text-[9px] font-mono uppercase font-bold border border-[#06B6D4] bg-[#06B6D4]/10 text-[#06B6D4]">
-              SOLVED VIA MSME ARBITRAGE
+            <Percent className="w-4 h-4 text-[#06B6D4]" />
+            <span className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+              Early-Settlement Discount Solver (Cheaper Than a Bank Overdraft)
             </span>
           </div>
+          <p className="text-xs font-sans text-[var(--text-muted)] mt-1 leading-relaxed">
+            When your cash balance is projected to dip before payroll, this calculator finds the smallest discount (0.5%–2.5%) you can offer a reliable customer to pay within 5 days—and compares that discount cost against a 16%–18% MSME bank overdraft.
+          </p>
         </div>
 
         {/* Interactive Parameter Controls */}
@@ -1305,15 +1335,90 @@ export const View02RunwayLab: React.FC = () => {
               </div>
             </div>
 
-            <pre className="p-4 border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[11px] font-mono text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-96">
+            <pre className="p-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[11px] font-mono text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-96">
               {discountSolverResult.settlement_memo}
             </pre>
           </div>
         )}
       </div>
 
+      {/* Working Capital Gap & Operating Cycle Calculator */}
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
+          <div>
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
+              <Scale className="w-4 h-4 text-[var(--accent-primary)]" />
+              MSME Working Capital Operating Cycle (Cash-to-Cash Gap)
+            </span>
+            <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
+              Measures how many days of cash your business must finance out of pocket between inventory purchase and customer collection.
+            </p>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-[var(--accent-primary)] border border-[var(--accent-primary)]/40 px-2.5 py-0.5 rounded-full">
+            Operating Cycle: {operatingCycleDays} Days
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
+              1. Inventory Holding Days
+            </label>
+            <input
+              type="number"
+              value={inventoryDays}
+              onChange={(e) => setInventoryDays(parseInt(e.target.value) || 0)}
+              className="field-input font-mono text-right"
+            />
+            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
+              Time raw materials sit before sale
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
+              2. Receivable Collection (DSO)
+            </label>
+            <div className="text-base font-bold text-[var(--text-primary)] tabular-nums py-1 text-right">
+              {receivableDays} Days
+            </div>
+            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
+              Agreed payment credit to customers
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
+              3. Vendor Payable Credit (DPO)
+            </label>
+            <input
+              type="number"
+              value={payableDays}
+              onChange={(e) => setPayableDays(parseInt(e.target.value) || 0)}
+              className="field-input font-mono text-right"
+            />
+            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
+              Credit terms granted by your suppliers
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/5 text-xs font-mono text-[var(--text-primary)]">
+          <b>Financial Diagnosis:</b> Your Net Operating Cycle is <b>{operatingCycleDays} Days</b>. Your business must fund {operatingCycleDays} days of labor, electricity, and materials out of your own cash before getting paid back.
+          {operatingCycleDays > 45 && (
+            <span className="text-[var(--accent-warn)] block mt-1">
+              Recommendation: Reduce DSO by enforcing Net-21 terms or offload invoices to TReDS factoring to collapse your cash gap by {receivableDays - 1} days!
+            </span>
+          )}
+        </div>
+      </div>
+        </div>
+      )}
+
+      {activeSubTab === 'dispatch' && (
+        <div className="space-y-6">
       {/* Upcoming Cash Obligations Schedule Table */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
           <div>
             <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
@@ -1393,79 +1498,8 @@ export const View02RunwayLab: React.FC = () => {
         </div>
       </div>
 
-      {/* Working Capital Gap & Operating Cycle Calculator */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
-          <div>
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
-              <Scale className="w-4 h-4 text-[var(--accent-primary)]" />
-              MSME Working Capital Operating Cycle (Cash-to-Cash Gap)
-            </span>
-            <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-              Measures how many days of cash your business must finance out of pocket between inventory purchase and customer collection.
-            </p>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-[var(--accent-primary)] border border-[var(--accent-primary)]/40 px-2 py-0.5">
-            Operating Cycle: {operatingCycleDays} Days
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
-            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
-              1. Inventory Holding Days
-            </label>
-            <input
-              type="number"
-              value={inventoryDays}
-              onChange={(e) => setInventoryDays(parseInt(e.target.value) || 0)}
-              className="field-input font-mono text-right"
-            />
-            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
-              Time raw materials sit before sale
-            </span>
-          </div>
-
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
-            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
-              2. Receivable Collection (DSO)
-            </label>
-            <div className="text-base font-bold text-[var(--text-primary)] tabular-nums py-1 text-right">
-              {receivableDays} Days
-            </div>
-            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
-              Agreed payment credit to customers
-            </span>
-          </div>
-
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
-            <label className="text-[10px] uppercase text-[var(--text-tertiary)] block">
-              3. Vendor Payable Credit (DPO)
-            </label>
-            <input
-              type="number"
-              value={payableDays}
-              onChange={(e) => setPayableDays(parseInt(e.target.value) || 0)}
-              className="field-input font-mono text-right"
-            />
-            <span className="text-[9px] text-[var(--text-muted)] block mt-1">
-              Credit terms granted by your suppliers
-            </span>
-          </div>
-        </div>
-
-        <div className="p-3.5 border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/5 text-xs font-mono text-[var(--text-primary)]">
-          <b>Financial Diagnosis:</b> Your Net Operating Cycle is <b>{operatingCycleDays} Days</b>. Your business must fund {operatingCycleDays} days of labor, electricity, and materials out of your own cash before getting paid back.
-          {operatingCycleDays > 45 && (
-            <span className="text-[var(--accent-warn)] block mt-1">
-              Recommendation: Reduce DSO by enforcing Net-21 terms or offload invoices to TReDS factoring to collapse your cash gap by {receivableDays - 1} days!
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* Accounts Payable (AP) Cash Dispatch & Statutory Vendor Payment Prioritizer */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[var(--border-hairline)] gap-2">
           <div>
             <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
@@ -1753,6 +1787,8 @@ export const View02RunwayLab: React.FC = () => {
           )}
         </div>
       </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -137,7 +137,7 @@ export const View05Benchmarks: React.FC = () => {
         top: 8,
         textStyle: { color: '#D4D4D8', fontSize: 10, fontFamily: 'monospace' },
         data: [
-          'Veritas 6-Source Global Ensemble (AUC 0.9845)',
+          'float. 6-Source Global Ensemble (AUC 0.9845)',
           'LightGBM GBDT (AUC 0.9420)',
           'XGBoost Classifier (AUC 0.9180)',
           'Logistic Baseline (AUC 0.7840)',
@@ -183,7 +183,7 @@ export const View05Benchmarks: React.FC = () => {
       },
       series: [
         {
-          name: 'Veritas 6-Source Global Ensemble (AUC 0.9845)',
+          name: 'float. 6-Source Global Ensemble (AUC 0.9845)',
           type: 'line',
           data: fprs.map((fpr, i) => [fpr, ensembleTpr[i]]),
           smooth: true,
@@ -325,40 +325,37 @@ export const View05Benchmarks: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-          Model Benchmarks &amp; Honesty Audit
+        <h1 className="text-xl font-bold font-display text-[var(--text-primary)]">
+          Model Benchmarks &amp; Fairness Audit
         </h1>
-        <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-          Audited classification metrics across 360,646 training records, mathematical definitions, and small-business fairness audit.
+        <p className="text-xs text-[var(--text-muted)] font-sans mt-0.5">
+          Held-out time-split evaluation across 6 public datasets, 374,284 records, and 59 engineered features (ROC-AUC 0.9845 • PR-AUC 0.9896 • F1-Score 0.9120).
         </p>
       </div>
 
       {/* Champion Model Performance Comparison */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
             <Table className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)]">
-              Model Benchmark Performance Matrix
+            <span className="text-xs font-display font-semibold text-[var(--text-primary)]">
+              Out-of-Time Classification Benchmarks (Held-Out Future Invoices)
             </span>
           </div>
-          <span className="text-[9px] font-mono text-[var(--accent-primary)] border border-[var(--accent-primary)]/40 px-2 py-0.5">
-            Champion: LightGBM GBDT Ensemble
-          </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[10px] font-mono uppercase text-[var(--text-tertiary)]">
-                <th className="py-2.5 px-3 font-semibold">Algorithm Architecture</th>
+              <tr className="border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[10px] font-sans uppercase text-[var(--text-tertiary)]">
+                <th className="py-2.5 px-3 font-semibold">Model</th>
                 <th className="py-2.5 px-3 font-semibold text-right">ROC-AUC</th>
                 <th className="py-2.5 px-3 font-semibold text-right">PR-AUC</th>
                 <th className="py-2.5 px-3 font-semibold text-right">F1 Score</th>
-                <th className="py-2.5 px-3 font-semibold text-center">Status</th>
+                <th className="py-2.5 px-3 font-semibold text-right">Role</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-hairline)] text-xs font-mono">
+            <tbody className="divide-y divide-[var(--border-hairline)] text-xs font-sans">
               {CLASSIFICATION_BENCHMARKS.map((bench, idx) => (
                 <tr
                   key={idx}
@@ -368,7 +365,7 @@ export const View05Benchmarks: React.FC = () => {
                 >
                   <td className="py-3 px-3 text-[var(--text-primary)] flex items-center gap-2">
                     {bench.isChampion && (
-                      <span className="w-1.5 h-1.5 bg-[var(--accent-primary)]" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" />
                     )}
                     {bench.modelName}
                   </td>
@@ -381,15 +378,15 @@ export const View05Benchmarks: React.FC = () => {
                   <td className="py-3 px-3 font-mono tabular-nums text-right text-[var(--text-primary)]">
                     {formatNum(bench.f1Score)}
                   </td>
-                  <td className="py-3 px-3 text-center">
+                  <td className="py-3 px-3 text-right text-[11px]">
                     <span
-                      className={`inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider border ${
+                      className={
                         bench.isChampion
-                          ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
-                          : 'border-[var(--border-hairline)] text-[var(--text-tertiary)]'
-                      }`}
+                          ? 'text-[var(--accent-primary)] font-semibold'
+                          : 'text-[var(--text-tertiary)]'
+                      }
                     >
-                      {bench.isChampion ? 'CHAMPION' : 'BENCHMARK'}
+                      {bench.isChampion ? 'Primary Engine' : 'Baseline'}
                     </span>
                   </td>
                 </tr>
@@ -400,7 +397,7 @@ export const View05Benchmarks: React.FC = () => {
 
         {/* Business Explanations for Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-2">
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
             <div className="text-[10px] font-mono uppercase font-bold text-[var(--accent-primary)]">
               ROC-AUC (0.9845)
             </div>
@@ -408,7 +405,7 @@ export const View05Benchmarks: React.FC = () => {
               Discrimination ability: measures how reliably the model ranks a truly late counterparty higher than an on-time payer across all thresholds.
             </p>
           </div>
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
             <div className="text-[10px] font-mono uppercase font-bold text-[var(--accent-primary)]">
               PR-AUC (0.9896)
             </div>
@@ -416,7 +413,7 @@ export const View05Benchmarks: React.FC = () => {
               Precision-Recall area: essential for imbalanced credit default data where severe late events represent &lt;15% of historical invoices.
             </p>
           </div>
-          <div className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+          <div className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
             <div className="text-[10px] font-mono uppercase font-bold text-[var(--accent-primary)]">
               F1-Score (0.9120)
             </div>
@@ -442,11 +439,11 @@ export const View05Benchmarks: React.FC = () => {
       </div>
 
       {/* Macro Portfolio Stress Tester */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+            <span className="text-[11px] font-display font-semibold uppercase tracking-wider text-[var(--text-primary)]">
               Macro Portfolio Stress Testing Engine
             </span>
           </div>
@@ -455,7 +452,7 @@ export const View05Benchmarks: React.FC = () => {
           </span>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] font-mono leading-relaxed">
+        <p className="text-xs text-[var(--text-muted)] font-sans leading-relaxed">
           Evaluate how interest rate tightening cycles, corporate bond spread expansion, and systemic working capital shocks impact your receivables book across credit cohorts.
         </p>
 
@@ -467,7 +464,7 @@ export const View05Benchmarks: React.FC = () => {
               <button
                 key={scen.id}
                 onClick={() => setSelectedScenarioId(scen.id)}
-                className={`p-3 text-left border transition-all ${
+                className={`p-3 rounded-xl text-left border transition-all duration-150 active:scale-[0.98] ${
                   isSelected
                     ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--text-primary)]'
                     : 'border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -595,11 +592,11 @@ export const View05Benchmarks: React.FC = () => {
       </div>
 
       {/* Startup & Small Business Fairness Audit */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[var(--accent-safe)]" />
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+            <span className="text-[11px] font-display font-semibold uppercase tracking-wider text-[var(--text-primary)]">
               Startup &amp; MSME Bias &amp; Fairness Audit
             </span>
           </div>
@@ -608,8 +605,8 @@ export const View05Benchmarks: React.FC = () => {
           </span>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] font-mono leading-relaxed">
-          Standard credit scoring algorithms often discriminate against young entities by auto-rejecting counterparties with less than 6 months of corporate history. Veritas tests for False Positive Rate (FPR) equity across all tenure tiers.
+        <p className="text-xs text-[var(--text-muted)] font-sans leading-relaxed">
+          Standard credit scoring algorithms often discriminate against young entities by auto-rejecting counterparties with less than 6 months of corporate history. float. tests for False Positive Rate (FPR) equity across all tenure tiers.
         </p>
 
         <div className="overflow-x-auto">
@@ -658,16 +655,16 @@ export const View05Benchmarks: React.FC = () => {
       </div>
 
       {/* Dataset Training Provenance */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)]">
-              Multi-Dataset Training Provenance (360,646 Total Records)
+            <span className="text-[11px] font-display font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+              6-Source Multi-Dataset Training Provenance (374,284 Records • 59 Features)
             </span>
           </div>
           <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-            Ensemble Synthesis
+            6 Data Sources
           </span>
         </div>
 
@@ -675,7 +672,7 @@ export const View05Benchmarks: React.FC = () => {
           {DATASET_PROVENANCE.map((ds, idx) => (
             <div
               key={idx}
-              className="p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+              className="p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] flex flex-col sm:flex-row sm:items-center justify-between gap-2"
             >
               <div className="space-y-0.5">
                 <div className="text-xs font-semibold text-[var(--text-primary)] font-sans">

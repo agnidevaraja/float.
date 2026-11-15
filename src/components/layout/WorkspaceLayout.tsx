@@ -1,6 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { THEME_PRESETS, FONT_PAIRINGS, DENSITY_PADDING, loadThemeState, saveThemeState, type ThemeState } from '../../store/themeStore';
+import { THEME_PRESETS, FONT_PAIRINGS, FONT_FAMILY_OPTIONS, DENSITY_PADDING, loadThemeState, saveThemeState, type ThemeState } from '../../store/themeStore';
 import { CollapsibleSidebar } from './CollapsibleSidebar';
 import { TopTelemetryBar } from './TopTelemetryBar';
 import { CommandPalette } from '../CommandPalette';
@@ -65,14 +65,18 @@ export const WorkspaceLayout: React.FC = () => {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute('data-theme', themeState.theme);
     const tokens = THEME_PRESETS[themeState.theme];
     Object.entries(tokens).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
     root.style.setProperty('--accent-primary', themeState.customAccent || tokens['--accent-primary']);
     const fonts = FONT_PAIRINGS[themeState.fontPairing];
-    root.style.setProperty('--font-display', fonts.display);
-    root.style.setProperty('--font-sans', fonts.ui);
+    const selectedFontOption =
+      FONT_FAMILY_OPTIONS.find((f) => f.id === (themeState.fontFamily || 'inter')) ||
+      FONT_FAMILY_OPTIONS[0];
+    root.style.setProperty('--font-display', selectedFontOption.cssStack);
+    root.style.setProperty('--font-sans', selectedFontOption.cssStack);
     root.style.setProperty('--font-mono', fonts.mono);
     root.style.setProperty('--cell-padding', `${DENSITY_PADDING[themeState.density]}px`);
 

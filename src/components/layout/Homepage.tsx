@@ -1,18 +1,22 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, ArrowRight, Database, Cpu, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, ArrowRight, Database, Cpu, TrendingUp, Layers, Globe } from 'lucide-react';
+import { Wordmark } from '../primitives/Wordmark';
+import { FLOAT_METRICS } from '../../data/metrics';
 
 interface StatCardProps {
   label: string;
   value: string;
+  sub?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value }) => (
-  <div className="border border-[var(--border-hairline)] bg-[var(--bg-elevated)] p-4">
-    <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] mb-1">
+const StatCard: React.FC<StatCardProps> = ({ label, value, sub }) => (
+  <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] p-4 transition-all duration-150 hover:border-[var(--border-subtle)]">
+    <div className="text-[10px] font-sans font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">
       {label}
     </div>
     <div className="text-xl font-mono font-bold text-[var(--text-primary)] tabular-nums">{value}</div>
+    {sub && <div className="text-[10px] font-sans text-[var(--text-muted)] mt-0.5">{sub}</div>}
   </div>
 );
 
@@ -22,24 +26,19 @@ export const Homepage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] font-sans overflow-x-hidden">
       {/* Top Header Bar */}
-      <header className="h-14 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border border-[var(--border-subtle)] flex items-center justify-center">
+      <header className="h-16 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-6 flex items-center justify-between">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-center">
             <ShieldCheck className="w-5 h-5 text-[var(--accent-primary)]" />
           </div>
-          <span className="text-sm font-semibold tracking-wide font-display">
-            VERITAS AI 2026
-          </span>
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-tertiary)]">
-            360,646 Verified Records
-          </span>
+          <Wordmark size="lg" showSubtitle />
         </div>
         <button
           onClick={() => navigate('/workspace')}
-          className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 transition-colors"
+          className="px-4 py-2 rounded-lg text-xs font-sans font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 transition-all duration-150 active:scale-[0.98]"
         >
-          Enter Risk Workbench
-          <ArrowRight className="inline w-3 h-3 ml-1.5" />
+          Open Workbench
+          <ArrowRight className="inline w-3.5 h-3.5 ml-1.5" />
         </button>
       </header>
 
@@ -47,104 +46,111 @@ export const Homepage: React.FC = () => {
       <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12">
         {/* Left Column */}
         <div className="lg:col-span-7 p-8 lg:p-12 border-r border-[var(--border-hairline)]">
+          <p className="text-xs font-sans font-semibold uppercase tracking-wider text-[var(--accent-primary)] mb-3">
+            Built for Indian MSME Founders &amp; Finance Teams
+          </p>
           <h1 className="text-4xl lg:text-5xl font-display font-bold leading-tight mb-6">
-            Pre-Deal B2B Payment Survival<br />
-            <span className="text-[var(--accent-primary)]">& Cash-Flow Collision Engine</span>
+            Know When Your Buyers Will Pay<br />
+            <span className="text-[var(--accent-primary)]">Before Your Cash Runs Out</span>
           </h1>
-          <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-8 max-w-xl">
-            Indian MSMEs go bankrupt when profitable on paper. Corporate buyers delay payments 15-60+ days past Net terms while fixed obligations drain bank balances on fixed dates. Our 4-source ensemble predicts the exact day cash arrives, so you never face a payroll bounce again.
+          <p className="text-sm font-sans text-[var(--text-muted)] leading-relaxed mb-8 max-w-xl">
+            Profitable small businesses go bankrupt when large corporate buyers pay 15–60 days late while salaries, rent, TDS, and GST still leave the bank on fixed dates. Trained on {FLOAT_METRICS.totalRecordsFormatted} records across {FLOAT_METRICS.dataSourcesCount} public datasets ({FLOAT_METRICS.featuresCount} features), <span className="font-semibold text-[var(--text-primary)]">float.</span> predicts when an invoice will actually be paid, flags cash shortfalls weeks in advance, and drafts the exact payment terms or legal reminders you need to stay solvent.
           </p>
 
-          <div className="grid grid-cols-2 gap-3 mb-8">
-            <StatCard label="ROC-AUC Score" value="0.9845" />
-            <StatCard label="PR-AUC Score" value="0.9896" />
-            <StatCard label="F1-Score" value="0.9120" />
-            <StatCard label="Training Records" value="360,646" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+            <StatCard label="Data Sources" value={`${FLOAT_METRICS.dataSourcesCount} Data Sources`} sub="B2B, Credit, Macro & Fraud" />
+            <StatCard label="Training Records" value={FLOAT_METRICS.totalRecordsFormatted} sub="Time-Split Validation" />
+            <StatCard label="Engineered Features" value={`${FLOAT_METRICS.featuresCount} Features`} sub="Payment & Macro Signals" />
+            <StatCard label="ROC-AUC Score" value={FLOAT_METRICS.rocAucFormatted} sub="Calibrated LightGBM" />
+            <StatCard label="PR-AUC Score" value={FLOAT_METRICS.prAucFormatted} sub="Imbalanced Default Metric" />
+            <StatCard label="F1-Score" value={FLOAT_METRICS.f1ScoreFormatted} sub="Held-Out Future Invoices" />
           </div>
 
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/workspace')}
-              className="px-5 py-2.5 text-sm font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 transition-colors"
+              className="px-5 py-2.5 rounded-lg text-sm font-sans font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90 transition-all duration-150 active:scale-[0.98]"
             >
-              Launch Risk Workbench
-              <ArrowRight className="inline w-3 h-3 ml-1.5" />
+              Launch Treasury Workbench
+              <ArrowRight className="inline w-3.5 h-3.5 ml-1.5" />
             </button>
           </div>
         </div>
 
         {/* Right Column */}
-        <div className="lg:col-span-5 p-6 bg-[var(--bg-surface)]">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] mb-4">
-            4-Source Ensemble Architecture
+        <div className="lg:col-span-5 p-6 lg:p-8 bg-[var(--bg-surface)]">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-display font-semibold text-[var(--text-primary)]">
+              6 Public Datasets Behind the Model
+            </span>
+            <span className="text-xs font-mono text-[var(--text-tertiary)]">
+              {FLOAT_METRICS.totalRecordsFormatted} records • {FLOAT_METRICS.featuresCount} features
+            </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {[
-              { name: 'Kaggle B2B AR', records: '45,839', icon: Database, color: 'var(--accent-info)' },
-              { name: 'UCI Credit Default', records: '30,000', icon: Cpu, color: 'var(--accent-warn)' },
-              { name: 'FRED Macro Spreads', records: 'Live BAA10Y', icon: TrendingUp, color: 'var(--accent-safe)' },
-              { name: 'OpenML Rare Fraud', records: '284,807', icon: ShieldCheck, color: 'var(--accent-danger)' },
+              { name: 'Kaggle B2B Accounts Receivable & Delays', records: '45,839', icon: Database, color: 'var(--accent-info)' },
+              { name: 'Corporate Bankruptcy & Solvency Dataset', records: '6,819', icon: Layers, color: 'var(--accent-primary)' },
+              { name: 'UCI Credit Default Records', records: '30,000', icon: Cpu, color: 'var(--accent-warn)' },
+              { name: 'FRED Corporate Bond Yield Spreads (BAA10Y)', records: '5,500', icon: TrendingUp, color: 'var(--accent-safe)' },
+              { name: 'World Bank Private Sector Credit to GDP', records: '1,319', icon: Globe, color: 'var(--accent-info)' },
+              { name: 'OpenML Financial Transaction Anomaly & Fraud', records: '284,807', icon: ShieldCheck, color: 'var(--accent-danger)' },
             ].map((source, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] transition-all duration-150 hover:border-[var(--border-subtle)]"
+              >
                 <source.icon className="w-4 h-4 shrink-0" style={{ color: source.color }} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">{source.name}</div>
-                  <div className="text-[10px] font-mono text-[var(--text-tertiary)]">{source.records} records</div>
+                  <div className="text-xs font-sans font-semibold text-[var(--text-primary)]">{source.name}</div>
+                  <div className="text-[11px] font-mono text-[var(--text-tertiary)]">{source.records} records</div>
                 </div>
-                <ArrowRight className="w-3 h-3 text-[var(--text-tertiary)]" />
               </div>
             ))}
           </div>
 
-          <div className="mt-4 p-4 border border-[var(--border-hairline)] bg-[var(--bg-canvas)]">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] mb-2">
-              Engine Pipeline
+          <div className="mt-4 p-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)]">
+            <div className="text-xs font-sans font-semibold text-[var(--text-primary)] mb-1">
+              How Every Invoice Is Scored
             </div>
-            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] flex-wrap">
-              <span className="px-2 py-1 border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-mono text-[10px]">
-                ISOLATION FOREST
-              </span>
-              <ArrowRight className="w-3 h-3" />
-              <span className="px-2 py-1 border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-mono text-[10px]">
-                LIGHTGBM + QUANTILE
-              </span>
-              <ArrowRight className="w-3 h-3" />
-              <span className="px-2 py-1 border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-mono text-[10px]">
-                SHAP + RUNWAY
-              </span>
-            </div>
+            <p className="text-xs font-sans text-[var(--text-muted)] leading-relaxed">
+              <strong>Isolation Forest</strong> checks for unusual order spikes or shell-vendor patterns, <strong>LightGBM</strong> predicts late-payment probability and the P20/P50/P80 arrival window, and <strong>SHAP</strong> explains the top risk drivers alongside your 60-day cash runway.
+            </p>
           </div>
         </div>
       </div>
 
       {/* Capability Matrix */}
-      <div className="max-w-[1440px] mx-auto border-x border-[var(--border-hairline)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="max-w-[1440px] mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { num: '01', title: 'Deal Underwriting Intake', desc: 'Probability of late payment score, explicit formula basis, and decision console' },
-            { num: '02', title: 'Ageing Matrix & Ledger', desc: '5-bracket overdue triage, template CSV upload/export, and batch AI scoring' },
-            { num: '03', title: 'GST Compliance & Section 16(2) ITC', desc: 'Statutory 180-day lockup clock, 18% penal interest, and filing calendar' },
-            { num: '04', title: 'Model Benchmarks & Honesty Audit', desc: 'Audited ROC-AUC, PR-AUC, F1 metrics, and MSME fairness check' },
-            { num: '05', title: 'AI Risk Copilot Advisory', desc: 'Grounded risk advisory answering queries directly from active deal context' },
-            { num: '06', title: 'Enterprise Settings & Bridge', desc: 'Live Colab/FastAPI probe, treasury defaults, WCAG AA suite, and Appearance Studio' },
+            { num: '01', title: 'Deal Underwriting', desc: 'Check late-payment probability, expected payout day, SHAP risk drivers, and safer milestone terms before signing an order.' },
+            { num: '02', title: 'Cash Flow & Runway Lab', desc: 'Simulate 60 days of bank balance against payroll, rent, TDS, and GST—plus calculate early-settlement discounts and vendor payouts.' },
+            { num: '03', title: 'Ageing Matrix & Ledger', desc: 'Track overdue customer bills across 5 ageing buckets, upload or export CSV ledgers, and generate formal collection notices.' },
+            { num: '04', title: 'GST Compliance & ITC Shield', desc: 'Reconcile GSTR-2B credits, track the 180-day Section 16(2) reversal clock, and calculate Section 43B(h) buyer tax leverage.' },
+            { num: '05', title: 'AI Risk Copilot', desc: 'Ask plain-English questions about any invoice, cash shortfall, or tax rule and get answers grounded in your live numbers.' },
+            { num: '06', title: 'Benchmarks, Planner & Settings', desc: `Inspect our ${FLOAT_METRICS.rocAucFormatted} ROC-AUC / ${FLOAT_METRICS.prAucFormatted} PR-AUC benchmarks, adapt the model to your own CSV ledger, or connect a live Colab GPU.` },
           ].map((mod) => (
             <div
               key={mod.num}
-              className="p-5 border-r border-b border-[var(--border-hairline)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer"
+              className="p-5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] hover:border-[var(--border-subtle)] transition-all duration-150 active:scale-[0.98] cursor-pointer"
               onClick={() => navigate('/workspace')}
             >
-              <div className="text-[10px] font-mono text-[var(--text-tertiary)] mb-1">{mod.num}</div>
-              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">{mod.title}</div>
-              <div className="text-xs text-[var(--text-muted)] leading-relaxed">{mod.desc}</div>
+              <div className="text-[11px] font-mono text-[var(--accent-primary)] mb-1">{mod.num}</div>
+              <div className="text-sm font-display font-semibold text-[var(--text-primary)] mb-1">{mod.title}</div>
+              <div className="text-xs font-sans text-[var(--text-muted)] leading-relaxed">{mod.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="max-w-[1440px] mx-auto border-r border-l border-b border-[var(--border-hairline)] px-6 py-4">
-        <p className="text-[10px] font-mono text-[var(--text-tertiary)] text-center">
-          SYSTEM NOTICE: Hackathon prototype trained on 360,646 public records (Kaggle B2B, UCI Credit, FRED Macro, OpenML). Does not constitute financial, legal, credit, or tax advice.
+      <footer className="max-w-[1440px] mx-auto border-t border-[var(--border-hairline)] px-6 py-5">
+        <p className="text-[11px] font-sans text-[var(--text-tertiary)] text-center">
+          <span className="font-display font-bold text-[var(--text-primary)]">float.</span> TREASURY &amp; RECEIVABLES OS — Trained on{' '}
+          <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.totalRecordsFormatted}</span> public records across{' '}
+          <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.dataSourcesCount} Data Sources</span> &amp;{' '}
+          <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.featuresCount} Features</span> (Kaggle B2B, Corporate Bankruptcy, UCI Credit, FRED Macro, World Bank, OpenML). Does not constitute financial, legal, credit, or tax advice.
         </p>
       </footer>
     </div>

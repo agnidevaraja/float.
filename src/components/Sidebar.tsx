@@ -116,10 +116,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full py-2 px-3 text-xs rounded border border-canvas-border bg-canvas-card hover:bg-canvas-hover text-brand-muted hover:text-brand-primary flex items-center justify-center space-x-1.5"
         >
           <ShieldAlert className="w-3.5 h-3.5" />
-          <span>Veritas AI Blind Audit</span>
+          <span>float. Blind Audit</span>
         </button>
         <p className="text-[9px] text-brand-tertiary text-center mt-2">
-          Trained on 360,646 public records across 4 datasets. Not financial advice.
+          Trained on 374,284 public records across 6 Data Sources (59 Features). Not financial advice.
         </p>
       </div>
     </aside>

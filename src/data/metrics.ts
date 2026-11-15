@@ -1,0 +1,18 @@
+export const FLOAT_METRICS = {
+  brandName: 'float.',
+  brandSubtitle: 'TREASURY & RECEIVABLES OS',
+  dataSourcesCount: 6,
+  totalRecords: 374284,
+  totalRecordsFormatted: '374,284',
+  totalRecordsShort: '374k',
+  featuresCount: 59,
+  rocAuc: 0.9845,
+  prAuc: 0.9896,
+  f1Score: 0.912,
+  rocAucFormatted: '0.9845',
+  prAucFormatted: '0.9896',
+  f1ScoreFormatted: '0.9120',
+  arrivalMaeDays: 0.38,
+  baselineMaeDays: 1.09,
+  startupFprPercent: 2.4,
+} as const;

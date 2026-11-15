@@ -18,7 +18,7 @@ const ACCENT_COLORS: Record<string, string> = {
 export const KpiCell: React.FC<KpiCellProps> = ({ label, value, sub, accent = 'primary' }) => {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
+      <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
         {label}
       </span>
       <span

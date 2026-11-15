@@ -651,7 +651,7 @@ export const View04AgeingMatrix: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'veritas_ageing_template.csv');
+    link.setAttribute('download', 'float_ageing_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -695,7 +695,7 @@ export const View04AgeingMatrix: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `veritas_ageing_scored_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `float_ageing_scored_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -710,7 +710,7 @@ export const View04AgeingMatrix: React.FC = () => {
       return;
     }
 
-    let pack = `========================================================================\nVERITAS AI — STATUTORY OVERDUE DUNNING & RECOVERY PACK\nGenerated Date: ${new Date().toLocaleDateString('en-IN')}\nTotal Overdue Invoices: ${overdueInvoices.length}\nTotal Overdue Book: ${formatINR(cfoMetrics.overdueAmount)}\nTotal Accrued MSMED Interest (3x RBI Bank Rate): ${formatINR(cfoMetrics.totalMsmeAccruedInterest)}\n========================================================================\n\n`;
+    let pack = `========================================================================\nfloat. — STATUTORY OVERDUE DUNNING & RECOVERY PACK\nGenerated Date: ${new Date().toLocaleDateString('en-IN')}\nTotal Overdue Invoices: ${overdueInvoices.length}\nTotal Overdue Book: ${formatINR(cfoMetrics.overdueAmount)}\nTotal Accrued MSMED Interest (3x RBI Bank Rate): ${formatINR(cfoMetrics.totalMsmeAccruedInterest)}\n========================================================================\n\n`;
 
     overdueInvoices.forEach((inv, idx) => {
       const overdueDays = Math.abs(inv.dueIn);
@@ -738,7 +738,7 @@ export const View04AgeingMatrix: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `veritas_bulk_dunning_pack_${new Date().toISOString().slice(0, 10)}.txt`);
+    link.setAttribute('download', `float_bulk_dunning_pack_${new Date().toISOString().slice(0, 10)}.txt`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

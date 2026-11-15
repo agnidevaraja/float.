@@ -21,13 +21,16 @@ import {
   THEME_PRESETS,
   THEME_LABELS,
   FONT_PAIRING_LABELS,
+  FONT_FAMILY_OPTIONS,
   ACCENT_PRESETS,
   type ThemeState,
   type ThemePreset,
   type FontPairing,
+  type FontFamilyId,
   type DensityMode,
   type InterfaceScale,
 } from '../../store/themeStore';
+import { CustomSelect } from '../primitives/CustomSelect';
 import { useWorkspace, DEFAULT_ENTERPRISE_PROFILE } from '../../store/workspaceStore';
 import {
   loadApiConfig,
@@ -85,13 +88,10 @@ const JSON_RESPONSE_SCHEMA = `{
   "required": ["blended_risk_percent", "expected_arrival_day", "arrival_window_low", "arrival_window_high"]
 }`;
 
-const COLAB_BOOTSTRAP_CODE = `# 1. Install dependencies
-!pip install -q fastapi uvicorn pyngrok pydantic lightgbm shap networkx numpy scipy
-
-# 2. Run the Veritas Super-Model Server
-import urllib.request
-url = "https://raw.githubusercontent.com/veritas-ai/core/main/veritas_colab_kernel.py"
-# Alternatively copy-paste the full veritas_colab_kernel.py script into this cell and execute!`;
+const COLAB_BOOTSTRAP_CODE = `# Open float.TM.ipynb in Google Colab:
+# 1. Click Runtime -> Run All
+# 2. Copy the printed https://*.trycloudflare.com URL from the last cell
+# 3. Paste the URL into the Inference Endpoint box on the left and click Probe Endpoint`;
 
 export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onThemeUpdate }) => {
   const { state, dispatch } = useWorkspace();
@@ -236,20 +236,13 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
   return (
     <div className="max-w-5xl mx-auto space-y-5">
       {/* Top Banner / Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
-        <div>
-          <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-            Enterprise Settings &amp; Infrastructure Studio
-          </h1>
-          <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-            Manage your Enterprise Identity profile, Google Colab Super-Model bridge, statutory limits, and accessibility.
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-[10px] font-mono text-[var(--accent-safe)] border border-[var(--border-hairline)] px-2 py-1 bg-[var(--bg-elevated)]">
-            WCAG 2.1 AA Compliant
-          </span>
-        </div>
+      <div className="pb-2 border-b border-[var(--border-hairline)]">
+        <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
+          Settings &amp; Model Bridge
+        </h1>
+        <p className="text-xs text-[var(--text-muted)] font-sans mt-0.5">
+          Configure your company profile, optional Google Colab GPU connection, tax defaults, accessibility, and typography.
+        </p>
       </div>
 
       {/* 5-Section Nav Tabs */}
@@ -364,17 +357,40 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
                   <label className="text-[10px] font-mono uppercase text-[var(--text-tertiary)] block mb-1">
                     Business Constitution
                   </label>
-                  <select
+                  <CustomSelect
                     value={enterpriseProfile.constitution}
-                    onChange={(e) => setEnterpriseProfileState((p) => ({ ...p, constitution: e.target.value as any }))}
-                    className="w-full px-2.5 py-1.5 text-xs font-mono bg-[var(--bg-canvas)] border border-[var(--border-hairline)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                  >
-                    <option value="PRIVATE_LIMITED">Private Limited Company (Pvt Ltd)</option>
-                    <option value="PROPRIETORSHIP">Sole Proprietorship</option>
-                    <option value="PARTNERSHIP">Partnership Firm</option>
-                    <option value="LLP">Limited Liability Partnership (LLP)</option>
-                    <option value="PUBLIC_LIMITED">Public Limited Company</option>
-                  </select>
+                    onChange={(val) =>
+                      setEnterpriseProfileState((p) => ({ ...p, constitution: val as any }))
+                    }
+                    ariaLabel="Business Constitution"
+                    options={[
+                      {
+                        value: 'PRIVATE_LIMITED',
+                        label: 'Private Limited Company (Pvt Ltd)',
+                        description: 'Corporate entity under Companies Act 2013',
+                      },
+                      {
+                        value: 'PROPRIETORSHIP',
+                        label: 'Sole Proprietorship',
+                        description: 'Individual founder-owned MSME',
+                      },
+                      {
+                        value: 'PARTNERSHIP',
+                        label: 'Partnership Firm',
+                        description: 'Registered or unregistered partnership',
+                      },
+                      {
+                        value: 'LLP',
+                        label: 'Limited Liability Partnership (LLP)',
+                        description: 'LLP Act 2008 corporate partnership',
+                      },
+                      {
+                        value: 'PUBLIC_LIMITED',
+                        label: 'Public Limited Company',
+                        description: 'Unlisted or listed public company',
+                      },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-mono uppercase text-[var(--text-tertiary)] block mb-1">
@@ -619,15 +635,12 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
             </form>
 
             {/* Right: Live AI Ingest Preview Terminal Card (5 cols) */}
-            <div className="lg:col-span-5 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col space-y-3">
+            <div className="lg:col-span-5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-mono flex items-center space-x-1.5">
+                <div className="text-xs font-semibold text-[var(--text-primary)] font-sans flex items-center space-x-1.5">
                   <Terminal className="w-3.5 h-3.5 text-[var(--accent-safe)]" />
-                  <span>Context-Aware AI Ingest Preview</span>
+                  <span>Company Context Summary</span>
                 </div>
-                <span className="text-[9px] font-mono text-[var(--accent-safe)] border border-[var(--border-hairline)] px-1.5 py-0.5 bg-[var(--bg-canvas)]">
-                  LIVE INGESTION
-                </span>
               </div>
 
               {/* Statutory Health Badges */}
@@ -683,7 +696,7 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
                   </button>
                 </div>
                 <pre className="text-[10px] font-mono text-[var(--text-secondary)] overflow-x-auto max-h-[300px] leading-relaxed">
-{`// Veritas AI System Prompt State:
+{`// float. System Prompt State:
 {
   "enterprise": "${enterpriseProfile.companyName}",
   "brand": "${enterpriseProfile.tradingBrandName}",
@@ -710,6 +723,58 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
       {/* SECTION 02: LIVE MODEL BRIDGE & GOOGLE COLAB KERNEL */}
       {activeSection === 'bridge' && (
         <div className="space-y-4">
+          {/* Plain-Language Explainer & 3-Step Guide Card */}
+          <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border-hairline)]">
+              <div>
+                <h2 className="text-sm font-display font-bold text-[var(--text-primary)]">
+                  Works Instantly in Your Browser — Optional Live Colab GPU Bridge
+                </h2>
+                <p className="text-xs font-sans text-[var(--text-muted)] mt-1 leading-relaxed">
+                  <strong>Zero setup required:</strong> <span className="font-semibold text-[var(--text-primary)]">float.</span> includes a built-in, calibrated LightGBM risk scorer, P20/P50/P80 arrival predictor, Isolation Forest anomaly check, and Indian GST/MSMED statutory engine that runs directly in your browser. If you want to run live Python FastAPI inference and chat with the 4-bit <strong>Qwen-2.5-7B-Instruct</strong> GPU agent, follow the 3 steps below using <code className="font-mono text-[var(--accent-primary)]">float.TM.ipynb</code> in this repository.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+                <div className="text-[11px] font-mono font-bold text-[var(--accent-primary)]">
+                  STEP 1 • OPEN NOTEBOOK
+                </div>
+                <div className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+                  Open <code className="font-mono">float.TM.ipynb</code> in Google Colab
+                </div>
+                <p className="text-[11px] font-sans text-[var(--text-muted)] leading-relaxed">
+                  Open the notebook from the repository root in Google Colab and select a free T4 GPU runtime.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+                <div className="text-[11px] font-mono font-bold text-[var(--accent-primary)]">
+                  STEP 2 • RUN ALL CELLS
+                </div>
+                <div className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+                  Click <code className="font-mono">Runtime &rarr; Run All</code>
+                </div>
+                <p className="text-[11px] font-sans text-[var(--text-muted)] leading-relaxed">
+                  Trains the 6-source ensemble (374,284 records, 59 features), loads Qwen-2.5-7B with guardrails, and starts the Cloudflare HTTPS tunnel.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] space-y-1">
+                <div className="text-[11px] font-mono font-bold text-[var(--accent-primary)]">
+                  STEP 3 • PASTE &amp; PROBE URL
+                </div>
+                <div className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+                  Paste the <code className="font-mono">trycloudflare.com</code> URL below
+                </div>
+                <p className="text-[11px] font-sans text-[var(--text-muted)] leading-relaxed">
+                  Copy the public <code className="font-mono">https://*.trycloudflare.com</code> URL printed at the bottom of the notebook, paste it below, and click <strong>Probe Endpoint</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left: Endpoint Configuration (6 cols) */}
             <div className="lg:col-span-6 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col space-y-4">
@@ -928,9 +993,9 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
                     </pre>
                   </div>
 
-                  <div className="p-2 border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[10px] font-mono text-[var(--text-muted)]">
-                    <span className="font-bold text-[var(--text-primary)]">Kernel Script Available:</span>{' '}
-                    The complete standalone server script is located at <code className="text-[var(--accent-primary)]">veritas_colab_kernel.py</code> and Jupyter notebook at <code className="text-[var(--accent-primary)]">veritas_super_model.ipynb</code> in your project root.
+                  <div className="p-2.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[11px] font-sans text-[var(--text-muted)]">
+                    <span className="font-semibold text-[var(--text-primary)]">Repository Files:</span>{' '}
+                    Notebook <code className="font-mono text-[var(--accent-primary)]">float.TM.ipynb</code> and standalone FastAPI kernel <code className="font-mono text-[var(--accent-primary)]">veritas_colab_kernel.py</code> are located in the project root.
                   </div>
                 </div>
               )}
@@ -1361,10 +1426,64 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
             </div>
           </div>
 
-          {/* Non-Generic Font Systems */}
-          <div className="space-y-2 pt-2 border-t border-[var(--border-hairline)]">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] block">
-              3. Non-Generic Font Pairings
+          {/* Live Font Family Selector (6 Google Fonts) */}
+          <div className="space-y-2.5 pt-3 border-t border-[var(--border-hairline)]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+                3. Live Application Font Family (6 Google Fonts)
+              </span>
+              <span className="text-[11px] font-mono text-[var(--accent-primary)]">
+                Active: {FONT_FAMILY_OPTIONS.find((f) => f.id === (themeState.fontFamily || 'inter'))?.name || 'Inter'}
+              </span>
+            </div>
+            <p className="text-xs font-sans text-[var(--text-muted)]">
+              Switch the global UI typeface immediately. Financial figures always keep aligned <code className="font-mono">tabular-nums</code> spacing.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {FONT_FAMILY_OPTIONS.map((fontOpt) => {
+                const currentFont: FontFamilyId = themeState.fontFamily || 'inter';
+                const isSelected = currentFont === fontOpt.id;
+                return (
+                  <button
+                    key={fontOpt.id}
+                    type="button"
+                    onClick={() => onThemeUpdate({ fontFamily: fontOpt.id })}
+                    style={{ fontFamily: fontOpt.cssStack }}
+                    className={`rounded-xl p-3.5 text-left border transition-all duration-150 active:scale-[0.98] flex flex-col justify-between gap-2 ${
+                      isSelected
+                        ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/30 shadow-sm'
+                        : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] hover:border-[var(--border-subtle)]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-bold text-[var(--text-primary)]">
+                          {fontOpt.name}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-tertiary)]">
+                          {fontOpt.subtitle}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <Check className="w-4 h-4 text-[var(--accent-primary)] shrink-0 mt-0.5" />
+                      )}
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)] leading-snug pt-1 border-t border-[var(--border-hairline)]/60">
+                      {fontOpt.sample}
+                    </div>
+                    <div className="text-[11px] tabular-nums font-semibold text-[var(--text-primary)]">
+                      ₹14,80,000 • Net-30 • 0.9845 AUC
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Typographic Pairing Presets */}
+          <div className="space-y-2 pt-3 border-t border-[var(--border-hairline)]">
+            <span className="text-xs font-sans font-semibold text-[var(--text-primary)] block">
+              4. Classic Font Pairings
             </span>
             <div className="space-y-2">
               {(Object.keys(FONT_PAIRING_LABELS) as FontPairing[]).map((fp) => {

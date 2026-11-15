@@ -494,7 +494,7 @@ export function calculateApCashAllocation(
   });
 
   const fundedItems = scoredItems.filter((i) => i.allocatedAmount > 0);
-  let rtgsBatchText = `VERITAS TREASURY DISPATCH // RTGS & NEFT PAYMENT RUN ADVICE
+  let rtgsBatchText = `float. TREASURY DISPATCH // RTGS & NEFT PAYMENT RUN ADVICE
 Date of Execution: ${today}
 Authorized Debit Account: [Company Current Account]
 Total Approved Outflow: INR ${allocatedCashAmount.toLocaleString('en-IN')}
@@ -512,7 +512,7 @@ BENEFICIARY BATCH SCHEDULE:
 
   rtgsBatchText += `--------------------------------------------------------------------------------
 Treasury Disallowed / Deferred Shortfall: INR ${shortfallAmount.toLocaleString('en-IN')}
-Prepared by Veritas Algorithmic Cash Dispatch Engine`;
+Prepared by float. Algorithmic Cash Dispatch Engine`;
 
   return {
     availableCash,
@@ -795,7 +795,7 @@ STATUTORY ADVANTAGES FOR ${counterpartyName.toUpperCase()}:
 - Delivers an annualized return on capital of ${annualizedDiscountApr}% p.a. for your treasury desk.
 
 BANK RTGS REMITTANCE COORDINATES:
-- Beneficiary Name: Veritas Industrial Enterprise
+- Beneficiary Name: float. Industrial Enterprise
 - Beneficiary Bank: HDFC Bank Limited (Corporate Banking Branch)
 - Account Number: 50200088192301 (Current Account)
 - IFSC Code: HDFC0001824
@@ -803,7 +803,7 @@ BANK RTGS REMITTANCE COORDINATES:
 NOTE: In the event remittance is not executed on or before ${expiryDate}, the gross contracted sum of INR ${invoiceAmount.toLocaleString('en-IN')} shall remain payable on the contractual due date.
 
 Authorized Signatory,
-Veritas Treasury & Credit Risk Unit`;
+float. Treasury & Credit Risk Unit`;
 
   const rationale =
     netBenefitVsBankOd >= 0

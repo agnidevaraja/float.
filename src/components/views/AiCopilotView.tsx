@@ -85,13 +85,13 @@ export const AiCopilotView: React.FC = () => {
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello! I am your Veritas AI Copilot, actively monitoring your deal intake, accounts receivable ledger, GST compliance status, and 60-day treasury runway.
+      content: `Hello! I am your float. Copilot, actively monitoring your deal intake, accounts receivable ledger, GST compliance status, and 60-day treasury runway.
 
 I have full context on:
 - Active Deal Dossier & Probability Scores
 - Portfolio Ageing Matrix (10 benchmark invoices aggregating ₹50.2L)
 - Section 16(2) GST & Section 43B(h) Statutory Rules
-- Champion LightGBM Model Benchmarks (ROC-AUC 0.9845 across 360,646 records)
+- Champion 6-Source Ensemble Benchmarks (6 Data Sources, 374,284 Records, 59 Features, ROC-AUC 0.9845, PR-AUC 0.9896, F1-Score 0.9120)
 
 Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit a counterparty, or draft a statutory notice.`,
       timestamp: new Date(),
@@ -507,7 +507,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
     // MODEL BENCHMARKS & HONESTY
     if (q.includes('benchmark') || q.includes('model') || q.includes('accuracy') || q.includes('roc') || q.includes('dataset')) {
       return {
-        content: `### Veritas AI Model Performance & Training Provenance:\n\n- **Dataset Volume:** Trained on **360,646 verified B2B corporate transactions** synthesized across SEC EDGAR 10-K, Kaggle B2B credit datasets, and RBI/FRED corporate default records.\n- **Champion Architecture:** LightGBM Gradient Boosted Decision Trees (GBDT) Ensemble with 4-source feature weighting.\n- **Classification Benchmarks:**\n  - **ROC-AUC: 0.9845** (vs XGBoost 0.9812, Random Forest 0.9634)\n  - **PR-AUC: 0.9896** (calibrated for extreme class imbalance where severe defaults are <15% of records)\n  - **F1-Score: 0.9120**\n- **Small Business Fairness Audit:** Verified **False Positive Rate of only 2.4%** on entities with less than 6 months operating history, ensuring startups are never unfairly blacklisted.`,
+        content: `### float. Model Performance & Training Provenance:\n\n- **Dataset Volume:** Trained on **374,284 Records** across **6 Data Sources** (Kaggle B2B AR, Corporate Bankruptcy, UCI Credit Default, FRED Macro Spreads, World Bank Private Credit, and OpenML Rare Fraud) with **59 Features**.\n- **Champion Architecture:** LightGBM Gradient Boosted Decision Trees (GBDT) Ensemble with 6-source feature weighting.\n- **Classification Benchmarks:**\n  - **ROC-AUC: 0.9845**\n  - **PR-AUC: 0.9896** (calibrated for extreme class imbalance where severe defaults are <15% of records)\n  - **F1-Score: 0.9120**\n- **Small Business Fairness Audit:** Verified **False Positive Rate of only 2.4%** on entities with less than 6 months operating history, ensuring startups are never unfairly blacklisted.`,
         thinkingTrace: thinkingMode ? thinkingSteps : undefined,
       };
     }
@@ -599,27 +599,24 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-120px)] flex flex-col border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-120px)] flex flex-col rounded-xl overflow-hidden border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
       {/* Top Header & Settings Toolbar */}
       <div className="border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-[var(--accent-primary)]" />
-          <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-primary)]">
-            AI Risk &amp; Treasury Copilot
-          </span>
-          <span className="text-[9px] font-mono text-[var(--accent-safe)] border border-[var(--accent-safe)]/40 px-1.5 py-0.2">
-            Context Connected
+          <span className="text-xs font-display font-bold text-[var(--text-primary)]">
+            float. AI Risk &amp; Treasury Copilot
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono">
+        <div className="flex items-center gap-2 text-xs font-sans">
           {/* Thinking Mode Toggle */}
           <button
             type="button"
             onClick={() => setThinkingMode((prev) => !prev)}
-            className={`px-2.5 py-1 text-[10px] font-mono border transition-colors flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-full text-[10px] font-sans font-semibold border transition-all duration-150 flex items-center gap-1.5 ${
               thinkingMode
-                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-bold'
+                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]'
                 : 'border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
@@ -628,15 +625,15 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
           </button>
 
           {/* Reply Depth Selector */}
-          <div className="flex items-center border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-0.5 text-[9px] font-mono">
+          <div className="flex items-center rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-0.5 text-[10px] font-sans">
             {(['cfo_brief', 'detailed', 'action_plan'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setReplyDepth(mode)}
-                className={`px-2 py-0.5 transition-colors ${
+                className={`px-2.5 py-0.5 rounded-full transition-all duration-150 ${
                   replyDepth === mode
-                    ? 'bg-[var(--accent-primary)] text-white font-bold'
+                    ? 'bg-[var(--accent-primary)] text-white font-semibold'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
@@ -651,25 +648,17 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
         </div>
       </div>
 
-      {/* Active Context Awareness Strip */}
-      <div className="px-3 py-1.5 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center gap-2 overflow-x-auto text-[9px] font-mono text-[var(--text-tertiary)] whitespace-nowrap">
-        <span className="text-[var(--text-primary)] font-bold uppercase">Context Ingest:</span>
-        <span className="px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
-          Deal: {state.intake.clientName || 'Apex Industrial'} (₹{((state.intake.invoiceAmount || 140000) / 1000).toFixed(0)}k)
-        </span>
-        {state.customBusinessActive && state.customBusinessProfile && (
-          <span className="px-2 py-0.5 border border-[var(--accent-safe)]/40 bg-[var(--accent-safe)]/10 text-[var(--accent-safe)] font-bold">
-            ADAPTER: {state.customBusinessProfile.companyName} ({state.customBusinessProfile.recordsCount} Invoices)
-          </span>
-        )}
-        <span className="px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
-          Ageing Book: 10 Invoices (₹50.2L, DSO: 42d)
-        </span>
-        <span className="px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
-          Treasury: ₹3.5L Bank Balance (60d Runway)
-        </span>
-        <span className="px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
-          Model: LightGBM ROC-AUC 0.9845
+      {/* Active Context Summary */}
+      <div className="px-3.5 py-2 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center justify-between gap-2 overflow-x-auto text-[11px] font-sans text-[var(--text-muted)] whitespace-nowrap">
+        <div>
+          <span className="font-semibold text-[var(--text-primary)]">Active Deal:</span>{' '}
+          {state.intake.clientName || 'Apex Industrial'} (₹{((state.intake.invoiceAmount || 140000) / 1000).toFixed(0)}k)
+          {state.customBusinessActive && state.customBusinessProfile
+            ? ` • Custom Adapter: ${state.customBusinessProfile.companyName} (${state.customBusinessProfile.recordsCount} invoices)`
+            : ' • Ageing Book: 10 invoices (₹50.2L)'}
+        </div>
+        <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+          6 Sources • 374,284 Recs • 59 Feat • AUC 0.9845 • PR 0.9896 • F1 0.9120
         </span>
       </div>
 
@@ -742,7 +731,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
 
                 {/* Main Message Bubble */}
                 <div
-                  className={`p-3.5 border text-xs font-mono leading-relaxed whitespace-pre-wrap ${
+                  className={`p-3.5 rounded-xl border text-xs font-sans leading-relaxed whitespace-pre-wrap ${
                     isUser
                       ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]'
                       : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--text-primary)]'
@@ -753,14 +742,14 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
 
                 {/* In-Chat Live EChart (if response contains chart) */}
                 {!isUser && msg.chartOption && (
-                  <div className="w-full border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 space-y-2">
+                  <div className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 space-y-2">
                     {msg.chartTitle && (
-                      <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-primary)] border-b border-[var(--border-hairline)] pb-1 flex items-center gap-1.5">
+                      <div className="text-[10px] font-display font-bold uppercase tracking-wider text-[var(--text-primary)] border-b border-[var(--border-hairline)] pb-1 flex items-center gap-1.5">
                         <BarChart2 className="w-3 h-3 text-[var(--accent-primary)]" />
                         {msg.chartTitle}
                       </div>
                     )}
-                    <EChartBox option={msg.chartOption} height={250} title={msg.chartTitle || 'Veritas Intelligence Analysis'} />
+                    <EChartBox option={msg.chartOption} height={250} title={msg.chartTitle || 'float. Intelligence Analysis'} />
                   </div>
                 )}
 
@@ -843,18 +832,18 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
           </span>
         )}
         {state.customBusinessActive && state.customBusinessProfile ? (
-          <span className="px-2 py-0.5 border border-[var(--accent-safe)]/40 bg-[var(--accent-safe)]/10 text-[var(--accent-safe)] font-bold">
+          <span className="px-2.5 py-0.5 rounded-full border border-[var(--accent-safe)]/40 bg-[var(--accent-safe)]/10 text-[var(--accent-safe)] font-bold">
             Custom Adapter: {state.customBusinessProfile.companyName} ({state.customBusinessProfile.counterpartiesCount} Counterparties)
           </span>
         ) : (
-          <span className="px-2 py-0.5 border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--text-tertiary)]">
-            Custom Adapter: Inactive (Global 360k LightGBM)
+          <span className="px-2.5 py-0.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--text-tertiary)]">
+            Custom Adapter: Inactive (6-Source 374,284 Recs • 59 Features)
           </span>
         )}
       </div>
 
       {/* Suggested Quick Prompt Chips */}
-      <div className="px-3 py-1.5 border-t border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center gap-1.5 overflow-x-auto text-[10px] font-mono whitespace-nowrap">
+      <div className="px-3 py-1.5 border-t border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center gap-1.5 overflow-x-auto text-[10px] font-sans whitespace-nowrap">
         {[
           'Audit our Enterprise Profile & CC limits',
           'Should I offer a 2% discount for 10-day payment?',
@@ -873,7 +862,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
             onClick={() => {
               setInputValue(chip);
             }}
-            className="px-2.5 py-1 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-colors"
+            className="px-3 py-1 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-all duration-150"
           >
             {chip}
           </button>
@@ -906,14 +895,14 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
             if (e.key === 'Enter') handleSend();
           }}
           placeholder="Ask about deal risks, cash runway, Section 43B(h), or request a graph..."
-          className="flex-1 py-2 px-3 text-xs font-mono bg-[var(--bg-elevated)] border border-[var(--border-hairline)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--text-tertiary)]"
+          className="flex-1 py-2 px-3 rounded-lg text-xs font-sans bg-[var(--bg-elevated)] border border-[var(--border-hairline)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--text-tertiary)]"
         />
 
         <button
           type="button"
           onClick={handleSend}
           disabled={!inputValue.trim() && !attachedFile}
-          className="px-4 py-2 text-xs font-mono uppercase tracking-wider font-bold border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:opacity-90 disabled:opacity-40 transition-opacity flex items-center gap-1.5"
+          className="px-4 py-2 rounded-lg text-xs font-sans uppercase tracking-wider font-bold border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:opacity-90 disabled:opacity-40 transition-all duration-150 flex items-center gap-1.5"
         >
           <Send className="w-3.5 h-3.5" />
           <span>Send</span>

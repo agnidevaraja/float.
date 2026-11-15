@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { PanelLeft, Command, Cpu, Building2 } from 'lucide-react';
+import React from 'react';
+import { PanelLeft, Command, Building2 } from 'lucide-react';
 import { type ThemeState } from '../../store/themeStore';
 import { useWorkspace } from '../../store/workspaceStore';
+import { FLOAT_METRICS } from '../../data/metrics';
+import { loadApiConfig } from '../../services/inferenceBridge';
 
 interface TopTelemetryBarProps {
   activeView: string;
@@ -20,17 +22,16 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
 }) => {
   const { state } = useWorkspace();
   const viewNames: Record<string, string> = {
-    deal: 'DEAL UNDERWRITING INTAKE',
-    runway: 'CASH FLOW & RUNWAY LAB',
-    ageing: 'AGEING MATRIX & RECEIVABLE LEDGER',
-    gst: 'GST COMPLIANCE & SECTION 16(2) ITC',
-    benchmarks: 'MODEL BENCHMARKS & HONESTY AUDIT',
-    copilot: 'AI RISK COPILOT ADVISORY',
-    'business-planner': 'BUSINESS DATA & EXPANSION PLANNER',
-    settings: 'ENTERPRISE SETTINGS & BRIDGE',
+    deal: 'Deal Underwriting',
+    runway: 'Cash Flow & Runway Lab',
+    ageing: 'Ageing Matrix & Receivable Ledger',
+    gst: 'GST Compliance & Section 16(2) ITC',
+    benchmarks: 'Model Benchmarks & Fairness Audit',
+    copilot: 'AI Risk Copilot',
+    'business-planner': 'Business & Working-Capital Planner',
+    settings: 'Settings & Model Bridge',
   };
 
-  const [macro] = useState({ spread: 1.95, delinq: 1.15 });
   const themes: ThemeState['theme'][] = ['obsidian', 'slate', 'ledger', 'terminal'];
 
   const cycleTheme = () => {
@@ -39,95 +40,71 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
     onThemeUpdate({ theme: next, customAccent: null });
   };
 
-  const isLiveColab = state.provenance === 'LIVE_COLAB';
+  const apiConfig = loadApiConfig();
+  const isLiveColab =
+    state.provenance === 'LIVE_COLAB' ||
+    Boolean(apiConfig.endpointUrl && apiConfig.endpointUrl.trim().length > 0);
 
   return (
-    <div className="h-12 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 flex items-center justify-between shrink-0">
-      <div className="flex items-center gap-2">
+    <div className="h-12 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 flex items-center justify-between shrink-0 gap-2">
+      <div className="flex items-center gap-2.5 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="p-1 hover:bg-[var(--bg-elevated)] transition-colors"
+          className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] transition-all duration-150"
           title="Toggle Sidebar (Ctrl+B)"
         >
           <PanelLeft className="w-4 h-4 text-[var(--text-tertiary)]" />
         </button>
-        <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">
-          {viewNames[activeView] || 'WORKBENCH'}
+        <span className="text-xs font-display font-semibold tracking-tight text-[var(--text-primary)] truncate">
+          {viewNames[activeView] || 'Treasury Workbench'}
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Custom Business Weights Active Indicator */}
-        {state.customBusinessActive && (
-          <div
-            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 border border-[var(--accent-safe)]/40 bg-[var(--accent-safe)]/10"
-            title="Custom business historical weights active for deal underwriting"
-          >
-            <span className="w-1.5 h-1.5 bg-[var(--accent-safe)] animate-pulse" />
-            <span className="text-[10px] font-mono text-[var(--accent-safe)] font-bold">
-              CUSTOM BUSINESS WEIGHTS ACTIVE
-            </span>
-          </div>
-        )}
-
-        {/* Active Enterprise Identity Badge */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* Active Enterprise Identity */}
         {state.enterpriseProfile && (
           <div
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]"
-            title={`Enterprise: ${state.enterpriseProfile.companyName} | Udyam: ${state.enterpriseProfile.udyamRegistrationNumber}`}
+            className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-elevated)]"
+            title={`Company: ${state.enterpriseProfile.companyName}`}
           >
             <Building2 className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-            <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] max-w-[150px] truncate">
+            <span className="text-[11px] font-sans font-medium text-[var(--text-primary)] max-w-[150px] truncate">
               {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName}
-            </span>
-            <span className="text-[9px] font-mono text-[var(--accent-safe)] border border-[var(--border-hairline)] px-1 bg-[var(--bg-surface)]">
-              {state.enterpriseProfile.msmeCategory}
             </span>
           </div>
         )}
 
-        {/* Model Provenance & Health Indicator (from plan.md) */}
-        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
+        {/* Engine Status Pill */}
+        <div
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-elevated)]"
+          title={`${FLOAT_METRICS.dataSourcesCount} Data Sources • ${FLOAT_METRICS.totalRecordsFormatted} Records • ${FLOAT_METRICS.featuresCount} Features • ROC-AUC ${FLOAT_METRICS.rocAucFormatted} • PR-AUC ${FLOAT_METRICS.prAucFormatted} • F1-Score ${FLOAT_METRICS.f1ScoreFormatted}`}
+        >
           <span
-            className={`w-1.5 h-1.5 rounded-[2px] ${
-              isLiveColab ? 'bg-[var(--accent-warn)] animate-pulse' : 'bg-[var(--accent-safe)]'
+            className={`text-[11px] font-sans font-medium ${
+              isLiveColab ? 'text-[var(--accent-safe)]' : 'text-[var(--text-primary)]'
             }`}
-          />
-          <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-            {isLiveColab ? 'LIVE COLAB' : 'LOCAL MIRROR'}
+          >
+            {isLiveColab
+              ? '● LIVE COLAB GPU • LightGBM + Qwen-7B (374,284 recs)'
+              : '● EMBEDDED ENGINE • Calibrated LightGBM (374,284 recs)'}
           </span>
-          <span className="text-[9px] font-mono text-[var(--text-tertiary)] hidden xl:inline">
-            • LightGBM v2.1 (360k recs)
-          </span>
-          {state.latencyMs !== null && (
-            <span className="text-[9px] font-mono text-[var(--accent-primary)] tabular-nums">
-              {state.latencyMs}ms
-            </span>
-          )}
         </div>
 
-        {/* Live Macro FRED Spread */}
-        <div className="hidden lg:flex items-center text-[10px] font-mono tabular-nums text-[var(--text-tertiary)]">
-          <span>BAA10Y: <span className="text-[var(--accent-warn)]">{macro.spread.toFixed(2)}%</span></span>
-          <span className="mx-1.5 text-[var(--border-hairline)]">|</span>
-          <span>Delinq: <span style={{ color: macro.delinq > 1.5 ? 'var(--accent-danger)' : 'var(--accent-safe)' }}>{macro.delinq.toFixed(2)}%</span></span>
-        </div>
-
-        <div className="w-px h-4 bg-[var(--border-hairline)]" />
+        <div className="w-px h-4 bg-[var(--border-hairline)] hidden sm:block" />
 
         {/* Theme Quick Switcher */}
         <button
           onClick={cycleTheme}
-          className="px-2 py-1 text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)] transition-colors"
-          title="Click to cycle themes"
+          className="px-2.5 py-1 rounded-lg text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)] transition-all duration-150"
+          title="Click to cycle themes (Obsidian / Slate / Ledger / Terminal)"
         >
           {themeState.theme.toUpperCase()}
         </button>
 
         {/* Command Palette Trigger */}
         <button
-          onClick={() => onOpenCmd ? onOpenCmd() : onToggleSidebar()}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)] transition-colors"
+          onClick={() => (onOpenCmd ? onOpenCmd() : onToggleSidebar())}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)] transition-all duration-150"
           title="Open Command Palette (Ctrl+K)"
         >
           <Command className="w-3 h-3" />

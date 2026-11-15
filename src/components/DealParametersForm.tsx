@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DealInput, CurrencyMode, IntegrityWarning, DueDayOfWeek } from '../types';
 import { AlertTriangle, AlertOctagon, Sliders, Calendar, DollarSign, Building2 } from 'lucide-react';
+import { CustomSelect } from './primitives/CustomSelect';
 
 interface DealParametersFormProps {
   input: DealInput;
@@ -213,17 +214,15 @@ export const DealParametersForm: React.FC<DealParametersFormProps> = ({
           </span>
           <span className="text-[10px] text-brand-tertiary">Affects banking clearance</span>
         </label>
-        <select
+        <CustomSelect
           value={input.dueWeekday}
-          onChange={(e) => onChange({ dueWeekday: e.target.value as DueDayOfWeek })}
-          className="w-full bg-canvas-card border border-canvas-border rounded py-1.5 px-2.5 text-xs font-mono text-brand-primary focus:border-canvas-focused focus:outline-none"
-        >
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-            <option key={day} value={day} className="bg-canvas-card text-brand-primary">
-              {day} {day === 'Mon' || day === 'Sun' ? '(Higher Clearing Delay)' : ''}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => onChange({ dueWeekday: val as DueDayOfWeek })}
+          ariaLabel="Invoice Due Day of Week"
+          options={(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as DueDayOfWeek[]).map((day) => ({
+            value: day,
+            label: `${day}${day === 'Mon' || day === 'Sun' ? ' (Higher Clearing Delay)' : ''}`,
+          }))}
+        />
       </div>
 
       {/* Financial Health Section */}

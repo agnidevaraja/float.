@@ -33,6 +33,7 @@ import {
 } from '../../engine/statutoryEngine';
 import { CreditMemoModal } from '../modals/CreditMemoModal';
 import { EChartBox } from '../charts/EChartBox';
+import { CustomSelect } from '../primitives/CustomSelect';
 import type { EChartsOption } from 'echarts';
 
 const fmt = (v: number) =>
@@ -116,7 +117,7 @@ export const View01DealWorkbench: React.FC = () => {
       });
       dispatch({ type: 'SET_PHASE', payload: 'dossier' });
     } catch (err) {
-      console.error('[Veritas] Risk evaluation error:', err);
+      console.error('[float.] Risk evaluation error:', err);
     } finally {
       dispatch({ type: 'SET_EVALUATING', payload: false });
     }
@@ -229,29 +230,29 @@ export const View01DealWorkbench: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-          Deal Underwriting Intake
+          Deal Underwriting
         </h1>
-        <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-          Evaluate B2B payment delay risk, counterparty credit ceilings, and default probability before extending commercial terms.
+        <p className="text-xs text-[var(--text-muted)] font-sans mt-0.5">
+          Check whether a customer is likely to pay late, when their payment will actually land in your bank account, and what contract terms keep your cash flow safe.
         </p>
       </div>
 
       {/* Preset Action Bar */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-2.5">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] font-bold flex items-center gap-1.5">
-            <Zap className="w-3 h-3 text-[var(--accent-primary)]" />
-            Load Benchmark Deal Preset (Verified 360,646 Training Records)
+          <span className="text-xs font-sans font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+            Sample Customer Scenarios (374,284 Records • 6 Data Sources • 59 Features)
           </span>
           <button
             type="button"
             onClick={handleResetToEmpty}
-            className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors"
+            className="px-2.5 py-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[10px] font-sans text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-all duration-150 active:scale-[0.98]"
           >
-            <RotateCcw className="w-2.5 h-2.5" /> Reset to Blank
+            <RotateCcw className="w-2.5 h-2.5" /> Reset Form
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           {SCENARIO_PRESETS.map((p) => {
             const isSelected = activePresetId === p.id;
             return (
@@ -259,20 +260,20 @@ export const View01DealWorkbench: React.FC = () => {
                 key={p.id}
                 type="button"
                 onClick={() => handleLoadPreset(p)}
-                className={`p-2.5 text-left border transition-colors ${
+                className={`rounded-xl p-3 text-left border transition-all duration-150 active:scale-[0.98] ${
                   isSelected
-                    ? 'border-[var(--accent-primary)] bg-[var(--bg-elevated)]'
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/30 shadow-sm'
                     : 'border-[var(--border-hairline)] bg-[var(--bg-elevated)] hover:border-[var(--text-tertiary)]'
                 }`}
               >
-                <div className="text-[9px] font-mono uppercase tracking-wider font-bold text-[var(--accent-primary)] truncate">
+                <div className="text-[10px] font-sans font-semibold text-[var(--accent-primary)] truncate">
                   {p.badge}
                 </div>
-                <div className="text-xs font-semibold text-[var(--text-primary)] truncate mt-0.5">
+                <div className="text-xs font-sans font-semibold text-[var(--text-primary)] truncate mt-1">
                   {p.name}
                 </div>
-                <div className="text-[9px] font-mono text-[var(--text-muted)] mt-1 truncate">
-                  ₹{(p.params.invoiceAmount / 1000).toFixed(0)}k | Net-{p.params.paymentTermDays}
+                <div className="text-[11px] font-mono text-[var(--text-muted)] mt-1 truncate tabular-nums">
+                  ₹{(p.params.invoiceAmount / 1000).toFixed(0)}k • Net-{p.params.paymentTermDays}
                 </div>
               </button>
             );
@@ -281,7 +282,7 @@ export const View01DealWorkbench: React.FC = () => {
       </div>
 
       {/* Section 01: Counterparty & Invoice Terms */}
-      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
+      <section className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
         {state.customBusinessActive && state.customBusinessProfile && (
           <div className="p-3 border border-[var(--accent-safe)]/40 bg-[var(--accent-safe)]/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
             <div>
@@ -369,17 +370,20 @@ export const View01DealWorkbench: React.FC = () => {
             />
           </Field>
           <Field label="Invoice Due Weekday">
-            <select
-              value={local.dueWeekday || 'Mon'}
-              onChange={(e) => update({ dueWeekday: e.target.value })}
-              className="field-input font-mono"
-            >
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={(local.dueWeekday || 'Mon') as string}
+              onChange={(val) => update({ dueWeekday: val })}
+              ariaLabel="Invoice Due Weekday"
+              options={[
+                { value: 'Mon', label: 'Monday', description: 'Standard weekly clearing run' },
+                { value: 'Tue', label: 'Tuesday', description: 'Mid-week settlement' },
+                { value: 'Wed', label: 'Wednesday', description: 'Mid-week settlement' },
+                { value: 'Thu', label: 'Thursday', description: 'Pre-weekend clearing' },
+                { value: 'Fri', label: 'Friday', description: 'Higher weekend rollover risk' },
+                { value: 'Sat', label: 'Saturday', description: 'Rolls to Monday RTGS window' },
+                { value: 'Sun', label: 'Sunday', description: 'Rolls to Monday RTGS window' },
+              ]}
+            />
           </Field>
         </div>
 
@@ -465,119 +469,134 @@ export const View01DealWorkbench: React.FC = () => {
         </div>
       </section>
 
-      {/* Section 02: Historical Behavior */}
-      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
-        <h2 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-          Section 02: Historical Behavior &amp; Macro Context
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Field label="Past Invoices Delivered" optional>
-            <input
-              type="number"
-              value={(local as any).pastInvoiceCount || ''}
-              onChange={(e) => update({ pastInvoiceCount: parseInt(e.target.value) || 0 })}
-              placeholder="e.g. 24"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-          <Field label="Past Late Payment Rate (%)" error={errors.pastLatePercent}>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={local.pastLatePercent === 0 ? '' : local.pastLatePercent}
-              onChange={(e) => update({ pastLatePercent: parseFloat(e.target.value) || 0 })}
-              placeholder="e.g. 30"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-          <Field label="Historical Average Delay (Days)">
-            <input
-              type="number"
-              min="0"
-              value={local.pastAvgDelayDays === 0 ? '' : local.pastAvgDelayDays}
-              onChange={(e) => update({ pastAvgDelayDays: parseFloat(e.target.value) || 0 })}
-              placeholder="e.g. 5"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-          <Field label="Order Size vs Historical Mean (x)" error={errors.orderSizeVsAvg}>
-            <input
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={local.orderSizeVsAvg || ''}
-              onChange={(e) => update({ orderSizeVsAvg: parseFloat(e.target.value) || 1 })}
-              placeholder="e.g. 1.8"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-          <Field label="FRED Macro Stress Multiplier">
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min="0.8"
-                max="2.0"
-                step="0.1"
-                value={local.macroStressMultiplier || 1.0}
-                onChange={(e) => update({ macroStressMultiplier: parseFloat(e.target.value) })}
-                className="flex-1 h-1 bg-[var(--bg-elevated)] appearance-none cursor-pointer"
-              />
-              <span className="text-xs font-mono tabular-nums text-[var(--text-primary)] w-10 text-right">
-                {(local.macroStressMultiplier || 1.0).toFixed(1)}x
-              </span>
+      {/* Balanced Cards Grid: Section 02 (Historical Behavior) & Section 03 (Company Liquidity Context) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
+        {/* Section 02: Historical Behavior */}
+        <section className="lg:col-span-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between">
+          <div>
+            <h2 className="text-[11px] font-sans font-bold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              Section 02: Historical Behavior &amp; Macro Context
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Field label="Past Invoices Delivered" optional>
+                <input
+                  type="number"
+                  value={(local as any).pastInvoiceCount || ''}
+                  onChange={(e) => update({ pastInvoiceCount: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 24"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+              <Field label="Past Late Payment Rate (%)" error={errors.pastLatePercent}>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={local.pastLatePercent === 0 ? '' : local.pastLatePercent}
+                  onChange={(e) => update({ pastLatePercent: parseFloat(e.target.value) || 0 })}
+                  placeholder="e.g. 30"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+              <Field label="Historical Average Delay (Days)">
+                <input
+                  type="number"
+                  min="0"
+                  value={local.pastAvgDelayDays === 0 ? '' : local.pastAvgDelayDays}
+                  onChange={(e) => update({ pastAvgDelayDays: parseFloat(e.target.value) || 0 })}
+                  placeholder="e.g. 5"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+              <Field label="Order Size vs Historical Mean (x)" error={errors.orderSizeVsAvg}>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={local.orderSizeVsAvg || ''}
+                  onChange={(e) => update({ orderSizeVsAvg: parseFloat(e.target.value) || 1 })}
+                  placeholder="e.g. 1.8"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+              <Field label="FRED Macro Stress Multiplier">
+                <div className="flex items-center gap-2 py-1.5">
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="2.0"
+                    step="0.1"
+                    value={local.macroStressMultiplier || 1.0}
+                    onChange={(e) => update({ macroStressMultiplier: parseFloat(e.target.value) })}
+                    className="flex-1 h-1.5 rounded-full bg-[var(--bg-elevated)] appearance-none cursor-pointer"
+                  />
+                  <span className="text-xs font-mono tabular-nums text-[var(--text-primary)] w-10 text-right">
+                    {(local.macroStressMultiplier || 1.0).toFixed(1)}x
+                  </span>
+                </div>
+              </Field>
+              <Field label="GST Registration Status">
+                <button
+                  type="button"
+                  onClick={() => update({ gstRegistered: !local.gstRegistered })}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-mono border text-left flex items-center justify-between transition-all duration-150 active:scale-[0.98] ${
+                    local.gstRegistered
+                      ? 'border-[var(--accent-primary)]/50 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]'
+                      : 'border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'
+                  }`}
+                >
+                  <span>{local.gstRegistered ? 'GST Registered' : 'Unregistered / Exempt'}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[var(--accent-primary)]/15 text-[10px] font-bold text-[var(--accent-primary)]">
+                    {local.gstRegistered ? '18% ITC' : 'NO ITC'}
+                  </span>
+                </button>
+              </Field>
             </div>
-          </Field>
-          <Field label="GST Registration Status">
-            <button
-              type="button"
-              onClick={() => update({ gstRegistered: !local.gstRegistered })}
-              className={`w-full py-2 px-3 text-xs font-mono border text-left flex items-center justify-between transition-colors ${
-                local.gstRegistered
-                  ? 'border-[var(--accent-primary)]/50 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]'
-                  : 'border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'
-              }`}
-            >
-              <span>{local.gstRegistered ? 'GST Registered' : 'Unregistered / Exempt'}</span>
-              <span className="text-[10px] font-bold text-[var(--accent-primary)]">
-                {local.gstRegistered ? '18% ITC' : 'NO ITC'}
-              </span>
-            </button>
-          </Field>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Section 03: Company Liquidity Context */}
-      <section className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
-        <h2 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
-          <DollarSign className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-          Section 03: Your Company Liquidity Context
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Current Bank Balance (INR)">
-            <input
-              type="number"
-              value={local.currentBankBalance === 0 ? '' : local.currentBankBalance}
-              onChange={(e) => update({ currentBankBalance: parseFloat(e.target.value) || 0 })}
-              placeholder="e.g. 250000"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-          <Field label="Monthly Fixed Operating Burn (INR)">
-            <input
-              type="number"
-              value={local.monthlyFixedExpenses === 0 ? '' : local.monthlyFixedExpenses}
-              onChange={(e) => update({ monthlyFixedExpenses: parseFloat(e.target.value) || 0 })}
-              placeholder="e.g. 160000"
-              className="field-input font-mono text-right"
-            />
-          </Field>
-        </div>
-      </section>
+        {/* Section 03: Company Liquidity Context */}
+        <section className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between">
+          <div>
+            <h2 className="text-[11px] font-sans font-bold uppercase tracking-wider text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <DollarSign className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              Section 03: Your Company Liquidity
+            </h2>
+            <div className="space-y-4">
+              <Field label="Current Bank Balance (INR)">
+                <input
+                  type="number"
+                  value={local.currentBankBalance === 0 ? '' : local.currentBankBalance}
+                  onChange={(e) => update({ currentBankBalance: parseFloat(e.target.value) || 0 })}
+                  placeholder="e.g. 250000"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+              <Field label="Monthly Fixed Operating Burn (INR)">
+                <input
+                  type="number"
+                  value={local.monthlyFixedExpenses === 0 ? '' : local.monthlyFixedExpenses}
+                  onChange={(e) => update({ monthlyFixedExpenses: parseFloat(e.target.value) || 0 })}
+                  placeholder="e.g. 160000"
+                  className="field-input font-mono text-right"
+                />
+              </Field>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-[var(--border-hairline)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+            <span>Baseline Burn Runway:</span>
+            <span className="font-bold text-[var(--text-primary)] tabular-nums">
+              {local.monthlyFixedExpenses > 0
+                ? `${Math.round((local.currentBankBalance / local.monthlyFixedExpenses) * 30)} Days`
+                : 'N/A'}
+            </span>
+          </div>
+        </section>
+      </div>
 
       {/* Action Footer */}
-      <div className="flex items-center justify-between border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
         <div className="text-[10px] font-mono text-[var(--text-tertiary)]">
           Formula: Late Rate (40%) + Delay Severity (25%) + Order Spike (20%) + FRED Spread (10%) - Tenure (5%)
         </div>
@@ -585,7 +604,7 @@ export const View01DealWorkbench: React.FC = () => {
           type="button"
           onClick={handleEvaluate}
           disabled={state.isEvaluating}
-          className="px-6 py-2.5 text-xs font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:opacity-95 disabled:opacity-40 transition-opacity flex items-center gap-2"
+          className="px-6 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:opacity-95 disabled:opacity-40 transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2 shrink-0"
         >
           {state.isEvaluating ? (
             <span>Computing Risk Score...</span>
@@ -1179,29 +1198,29 @@ function DossierPhase({
             height={320}
             title={
               activeVizTab === 'arrival'
-                ? 'Expected Capital Arrival Probability Bell Curve (Gaussian 60d Density)'
+                ? 'Expected Payment Arrival Curve (P20 / P50 / P80 Window)'
                 : activeVizTab === 'radar'
-                ? 'Multi-Vector Deal Risk Profile vs Benchmark Low-Risk Baseline'
-                : 'TreeSHAP Feature Attribution Waterfall (Additive Probability Delta)'
+                ? 'Deal Risk Profile vs. Low-Risk Baseline'
+                : 'SHAP Risk Drivers (Why the Model Scored This Deal)'
             }
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[var(--border-hairline)] text-[10px] font-mono">
-          <div className="p-2 bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
-            <span className="text-[var(--text-tertiary)] block">Contract vs Mean Delay</span>
+          <div className="p-2 rounded-lg bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
+            <span className="text-[var(--text-tertiary)] block">Contract vs Expected Arrival</span>
             <span className="font-bold text-[var(--text-primary)] tabular-nums mt-0.5 block">
-              Net-{intake.paymentTermDays} → Day {result.expectedArrivalDay} (+{Math.max(0, result.expectedArrivalDay - intake.paymentTermDays)}d lag)
+              Net-{intake.paymentTermDays} → Day {result.expectedArrivalDay} (+{Math.max(0, result.expectedArrivalDay - intake.paymentTermDays)}d delay)
             </span>
           </div>
-          <div className="p-2 bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
-            <span className="text-[var(--text-tertiary)] block">P20–P80 Confidence Band</span>
+          <div className="p-2 rounded-lg bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
+            <span className="text-[var(--text-tertiary)] block">P20–P80 Arrival Window</span>
             <span className="font-bold text-[#F59E0B] tabular-nums mt-0.5 block">
               Day {result.arrivalWindowLow} to Day {result.arrivalWindowHigh} (±{Math.round((result.arrivalWindowHigh - result.arrivalWindowLow) / 2)}d)
             </span>
           </div>
-          <div className="p-2 bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
-            <span className="text-[var(--text-tertiary)] block">Primary Risk Divergence</span>
+          <div className="p-2 rounded-lg bg-[var(--bg-canvas)] border border-[var(--border-hairline)]">
+            <span className="text-[var(--text-tertiary)] block">Main Risk Driver</span>
             <span className="font-bold text-[var(--accent-danger)] tabular-nums mt-0.5 block">
               {intake.pastLatePercent > 30 ? `Past Late ${intake.pastLatePercent}%` : `Order Size ${intake.orderSizeVsAvg}x Mean`}
             </span>
@@ -1210,21 +1229,18 @@ function DossierPhase({
       </div>
 
       {/* TReDS Invoice Discounting & Factoring Yield Analyzer */}
-      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
+      <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-[var(--border-hairline)]">
           <div className="flex items-center gap-2">
             <Scale className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-primary)]">
-              TReDS Institutional Factoring Yield (RXIL / M1xchange / Invoicemart)
+            <span className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+              TReDS Invoice Discounting Option (RXIL / M1xchange / Invoicemart)
             </span>
           </div>
-          <span className="text-[9px] font-mono text-[var(--accent-safe)] border border-[var(--accent-safe)]/40 px-2 py-0.5">
-            Zero-Recourse Risk Transfer
-          </span>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] font-mono leading-relaxed">
-          Instead of waiting Net-{intake.paymentTermDays} days and carrying a {result.blendedRiskPercent.toFixed(1)}% late payment risk, factor this invoice on an RBI-approved TReDS exchange to unlock immediate day-1 liquidity.
+        <p className="text-xs text-[var(--text-muted)] font-sans leading-relaxed">
+          Instead of waiting Net-{intake.paymentTermDays} days and carrying a {result.blendedRiskPercent.toFixed(1)}% late-payment risk, you can discount this invoice on an RBI-approved TReDS exchange to receive cash on Day 1.
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
