@@ -23,6 +23,9 @@ credentials*.json
 dist
 dist-ssr
 
+# Temporary feature proposals
+feature_list.suggestions.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
