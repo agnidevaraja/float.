@@ -12,6 +12,7 @@ import { View03GstShield } from '../views/View03GstShield';
 import { View04AgeingMatrix } from '../views/View04AgeingMatrix';
 import { View05Benchmarks } from '../views/View05Benchmarks';
 import { View06Settings } from '../views/View06Settings';
+import { AiAssistant } from '../AiAssistant';
 
 const DEFAULT_DEAL_INPUT: DealInput = {
   invoiceAmount: 125000, paymentTermDays: 30, customerTenureMonths: 14,
@@ -83,6 +84,7 @@ export const WorkspaceLayout: React.FC = () => {
         <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--cell-padding, 20px)' }}>
           {renderView()}
         </main>
+        <AiAssistant input={dealInput} result={result} />
       </div>
     </div>
   );
