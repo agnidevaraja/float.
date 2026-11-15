@@ -22,6 +22,7 @@ import {
   ARRIVAL_MAE_BENCHMARK,
   FAIRNESS_AUDIT_DATA,
   TEST_FAILURE_CASES,
+  DATASET_PROVENANCE,
 } from '../../data/benchmarks';
 
 interface View05BenchmarksProps {
@@ -189,31 +190,39 @@ export const View05Benchmarks: React.FC<View05BenchmarksProps> = ({ result }) =>
         </span>
         <div className="space-y-3">
           {TEST_FAILURE_CASES.map((fc, idx) => (
-            <div
-              key={idx}
-              className="border border-[var(--border-hairline)] p-3"
-            >
+            <div key={idx} className="border border-[var(--border-hairline)] p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono text-[var(--text-muted)]">
-                  {fc.invoiceId}
-                </span>
-                <span className="text-[10px] font-mono text-[var(--text-muted)]">
-                  ₹{new Intl.NumberFormat('en-IN').format(fc.amount)}
-                </span>
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">{fc.invoiceId}</span>
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">INR {new Intl.NumberFormat('en-IN').format(fc.amount)}</span>
               </div>
               <div className="flex items-center space-x-3 text-[10px]">
-                <span className="text-[var(--accent-danger)] line-through">
-                  Predicted: {fc.modelPrediction}
-                </span>
-                <span className="text-[var(--accent-safe)]">
-                  Actual: {fc.actualOutcome}
-                </span>
+                <span className="text-[var(--accent-danger)]">Predicted: {fc.modelPrediction}</span>
+                <span className="text-[var(--accent-safe)]">Actual: {fc.actualOutcome}</span>
               </div>
-              <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 leading-relaxed">
-                {fc.explanation}
-              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 leading-relaxed">{fc.explanation}</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Data Provenance */}
+      <div className="border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-3 block">Dataset Provenance</span>
+        <div className="space-y-2">
+          {DATASET_PROVENANCE.map((ds, idx) => (
+            <div key={idx} className="flex items-center gap-3 p-2.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)]">
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)] w-5">{String(idx + 1).padStart(2, '0')}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] text-[var(--text-primary)] truncate">{ds.name}</div>
+                <div className="text-[9px] font-mono text-[var(--text-tertiary)]">{ds.source} | {ds.records.toLocaleString()} records</div>
+              </div>
+              <span className="text-[9px] font-mono text-[var(--text-muted)] shrink-0">{ds.role.split(' ').slice(0, 3).join(' ')}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-[var(--text-tertiary)]">
+          <span>Total Records</span>
+          <span className="text-[var(--text-primary)] tabular-nums">360,646</span>
         </div>
       </div>
     </div>
