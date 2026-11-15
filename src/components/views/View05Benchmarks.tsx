@@ -25,9 +25,8 @@ import {
 } from '../../data/benchmarks';
 
 interface View05BenchmarksProps {
-  }
-
-const navigate = useNavigate();
+  result: RiskEvaluationResult;
+}
 
 export const View05Benchmarks: React.FC<View05BenchmarksProps> = ({ result }) => {
   const formatNum = (val: number, decimals = 4) => val.toFixed(decimals);

@@ -14,12 +14,12 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
   activeView, onLoadScenario, scenarioPresets, themeState, onThemeUpdate,
 }) => {
   const viewNames: Record<string, string> = {
-    '/deal': 'DEAL & ARRIVAL WORKBENCH',
-    '/runway': '60-DAY RUNWAY COLLISION LAB',
-    '/gst': 'GST & VENDOR ANOMALY SHIELD',
-    '/ageing': 'AGEING MATRIX & BATCH LEDGER',
-    '/benchmarks': 'BENCHMARKS & HONESTY AUDIT',
-    '/settings': 'COLAB BRIDGE & STUDIO',
+    'deal': 'DEAL & ARRIVAL WORKBENCH',
+    'runway': '60-DAY RUNWAY COLLISION LAB',
+    'gst': 'GST & VENDOR ANOMALY SHIELD',
+    'ageing': 'AGEING MATRIX & BATCH LEDGER',
+    'benchmarks': 'BENCHMARKS & HONESTY AUDIT',
+    'settings': 'COLAB BRIDGE & STUDIO',
   };
 
   const themes: ThemeState['theme'][] = ['obsidian', 'slate', 'ledger', 'terminal'];

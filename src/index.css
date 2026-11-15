@@ -2,7 +2,21 @@
 @import url('https://cdn.jsdelivr.net/npm/@fontshare/card-grotesk@1.0/fonts/card-grotesk.css');
 @import "tailwindcss";
 
+
 @theme {
+  --bg-canvas: #09090B;
+  --bg-surface: #111113;
+  --bg-elevated: #18181B;
+  --border-hairline: #27272A;
+  --border-subtle: #3F3F46;
+  --text-primary: #FAFAFA;
+  --text-muted: #A1A1AA;
+  --text-tertiary: #71717A;
+  --accent-primary: #2563EB;
+  --accent-safe: #10B981;
+  --accent-warn: #F59E0B;
+  --accent-danger: #EF4444;
+  --accent-info: #38BDF8;
   --color-bg-canvas: #09090B;
   --color-bg-surface: #111113;
   --color-bg-elevated: #18181B;
@@ -97,3 +111,43 @@ option {
   background-color: var(--bg-surface);
   color: var(--text-primary);
 }
+
+
+/* Custom utilities */
+.bg-canvas { background-color: var(--bg-canvas); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-elevated { background-color: var(--bg-elevated); }
+.border-hairline { border-color: var(--border-hairline); }
+.border-subtle-custom { border-color: var(--border-subtle); }
+.text-primary-custom { color: var(--text-primary); }
+.text-muted-custom { color: var(--text-muted); }
+.text-tertiary-custom { color: var(--text-tertiary); }
+.accent-primary-custom { color: var(--accent-primary); }
+.accent-safe-custom { color: var(--accent-safe); }
+.accent-warn-custom { color: var(--accent-warn); }
+.accent-danger-custom { color: var(--accent-danger); }
+.bg-accent-safe { background-color: var(--accent-safe); }
+.bg-accent-warn { background-color: var(--accent-warn); }
+.bg-accent-danger { background-color: var(--accent-danger); }
+.border-accent-safe { border-color: var(--accent-safe); }
+.border-accent-warn { border-color: var(--accent-warn); }
+.border-accent-danger { border-color: var(--accent-danger); }
+.bg-accent-primary { background-color: var(--accent-primary); }
+.border-accent-primary { border-color: var(--accent-primary); }
+.text-accent-primary { color: var(--accent-primary); }
+.text-accent-safe { color: var(--accent-safe); }
+.text-accent-warn { color: var(--accent-warn); }
+.text-accent-danger { color: var(--accent-danger); }
+.bg-accent-primary/10 { background-color: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.bg-accent-safe/10 { background-color: color-mix(in srgb, var(--accent-safe) 10%, transparent); }
+.bg-accent-warn/10 { background-color: color-mix(in srgb, var(--accent-warn) 10%, transparent); }
+.bg-accent-danger/10 { background-color: color-mix(in srgb, var(--accent-danger) 10%, transparent); }
+.border-accent-primary/40 { border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent); }
+.border-accent-safe/40 { border-color: color-mix(in srgb, var(--accent-safe) 40%, transparent); }
+.border-accent-warn/40 { border-color: color-mix(in srgb, var(--accent-warn) 40%, transparent); }
+.border-accent-danger/40 { border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent); }
+.bg-accent-primary/15 { background-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
+.bg-accent-info/10 { background-color: color-mix(in srgb, var(--accent-info) 10%, transparent); }
+.border-accent-info/40 { border-color: color-mix(in srgb, var(--accent-info) 40%, transparent); }
+.hover:border-accent-primary:hover { border-color: var(--accent-primary); }
+.hover:text-accent-primary:hover { color: var(--accent-primary); }

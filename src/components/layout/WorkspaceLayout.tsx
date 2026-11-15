@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { DealInput, RiskEvaluationResult, ScenarioPreset } from '../../types';
 import { evaluateB2bPaymentRisk } from '../../engine/riskEngine';
 import { SCENARIO_PRESETS } from '../../data/scenarios';
@@ -20,7 +21,7 @@ const DEFAULT_DEAL_INPUT: DealInput = {
 };
 
 export const WorkspaceLayout: React.FC = () => {
-  const location = window.location;
+  const location = useLocation();
   const viewId = location.pathname.replace('/workspace', '').replace('/', '') || 'deal';
   const [dealInput, setDealInput] = useState<DealInput>(DEFAULT_DEAL_INPUT);
   const [themeState, setThemeState] = useState<ThemeState>(() => loadThemeState());
@@ -43,7 +44,6 @@ export const WorkspaceLayout: React.FC = () => {
 
   const result = evaluateB2bPaymentRisk(dealInput);
 
-  // Apply theme CSS variables to document.documentElement
   useEffect(() => {
     const root = document.documentElement;
     const tokens = THEME_PRESETS[themeState.theme];
@@ -77,10 +77,10 @@ export const WorkspaceLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
-      <CollapsibleSidebar activeView={viewId} />
+      <CollapsibleSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopTelemetryBar activeView={viewId} onLoadScenario={handleLoadScenario} scenarioPresets={SCENARIO_PRESETS} themeState={themeState} onThemeUpdate={handleThemeUpdate} />
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--cell-padding, 20px)' }}>
           {renderView()}
         </main>
       </div>

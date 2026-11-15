@@ -14,6 +14,7 @@ import { CheckSquare, Square, Wallet } from 'lucide-react';
 
 interface View02RunwayLabProps {
   input: DealInput;
+  onInputChange: (u: Partial<DealInput>) => void;
   result: RiskEvaluationResult;
 }
 
@@ -31,10 +32,7 @@ const COMMITMENTS = [
   { id: 'section43b', label: 'Section 43B', icon: Square, defaultAmount: 10000 },
 ];
 
-export const View02RunwayLab: React.FC<View02RunwayLabProps> = ({
-  input,
-  result,
-}) => {
+export const View02RunwayLab: React.FC<View02RunwayLabProps> = ({ input, result }) => {
   const [commitments, setCommitments] = React.useState<
     Record<string, { enabled: boolean; amount: number }>
   >({
