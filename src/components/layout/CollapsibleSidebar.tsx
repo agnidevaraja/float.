@@ -13,8 +13,8 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { useWorkspace } from '../../store/workspaceStore';
-import { Wordmark } from '../primitives/Wordmark';
-import { FLOAT_METRICS } from '../../data/metrics';
+import { Wordmark } from '../common/Wordmark';
+import { FLOAT_METRICS } from '../../utils/metrics';
 
 interface NavItem {
   id: string;
@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'runway', label: 'Cash Flow & Runway', icon: TrendingUp, path: '/workspace/runway', section: 'core' },
   { id: 'ageing', label: 'Ageing Matrix & Ledger', icon: Table2, path: '/workspace/ageing', section: 'core' },
   { id: 'gst', label: 'GST Compliance & ITC', icon: Shield, path: '/workspace/gst', section: 'core' },
-  { id: 'copilot', label: 'AI Risk Copilot', icon: MessageSquare, path: '/workspace/copilot', section: 'core' },
+  { id: 'copilot', label: 'Treasury Advisory Copilot', icon: MessageSquare, path: '/workspace/copilot', section: 'core' },
   { id: 'business-planner', label: 'Business & Planning', icon: Briefcase, path: '/workspace/business-planner', section: 'core' },
   { id: 'benchmarks', label: 'Model Benchmarks', icon: BarChart3, path: '/workspace/benchmarks', section: 'system' },
   { id: 'settings', label: 'Settings & Bridge', icon: Settings, path: '/workspace/settings', section: 'system' },
@@ -57,7 +57,7 @@ export const CollapsibleSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle
         <div
           onClick={() => navigate('/')}
           className="w-9 h-9 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-center mb-2 cursor-pointer"
-          title="float. — TREASURY & RECEIVABLES OS"
+          title="float. - Treasury & Receivables Platform"
         >
           <Wordmark collapsed />
         </div>

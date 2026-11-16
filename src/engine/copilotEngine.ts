@@ -2,8 +2,8 @@ import type { WorkspaceState } from '../store/workspaceStore';
 import type {
   ToolUsageItem,
 } from '../types/engineContract';
-import type { DealInput, RiskEvaluationResult } from '../types';
-import { evaluateB2bPaymentRisk } from './riskEngine';
+import type { DealInput, RiskEvaluationResult } from '../types/deal';
+import { evaluateB2bPaymentRisk } from './paymentModel';
 import {
   calculateMsmeCompoundInterest,
   calculateSection43bExposure,
@@ -14,7 +14,7 @@ import {
   calculateNayakWorkingCapital,
   solveOptimalDynamicDiscounting,
 } from './statutoryEngine';
-import { CLASSIFICATION_BENCHMARKS, DATASET_PROVENANCE } from '../data/benchmarks';
+import { CLASSIFICATION_BENCHMARKS, DATASET_PROVENANCE } from '../utils/benchmarks';
 
 export type ReplyDepth = 'cfo_brief' | 'detailed' | 'action_plan';
 
@@ -432,7 +432,7 @@ export function generateCopilotTurnResponse(opts: {
   if (!attachment && isGreetingOrHelp(q)) {
     const dealLine = snap.hasActiveDeal
       ? `Active Deal: **${fmtINR(snap.activeDealAmount)}** (${snap.activeDealClient}, Net-${snap.activeDealTerms})${
-          state.currentResult ? ` — **${state.currentResult.blendedRiskPercent.toFixed(1)}% late risk**, Day ${state.currentResult.expectedArrivalDay} arrival` : ''
+          state.currentResult ? ` - **${state.currentResult.blendedRiskPercent.toFixed(1)}% late risk**, Day ${state.currentResult.expectedArrivalDay} arrival` : ''
         }`
       : 'Active Deal: **None entered yet** (`₹0`)';
 
@@ -464,8 +464,8 @@ export function generateCopilotTurnResponse(opts: {
 
     const body =
       replyDepth === 'cfo_brief'
-        ? `Hello! I am **float. AI Risk & Treasury Copilot** monitoring **${snap.companyName}**.\n- ${cashLine}\n- ${dealLine} | ${ledgerLine}\n- Try asking: ${suggestedPrompts[0]} or ${suggestedPrompts[1]}`
-        : `Hello! I am **float. AI Risk & Treasury Copilot**.\n\n**Current Live Workspace Snapshot (${snap.companyName}):**\n- ${cashLine}\n- ${dealLine}\n- ${ledgerLine}\n- GST & AP Books: **${snap.vendorBillsCount} vendor bills** audited | **${snap.tdsCount} TDS 26AS items** | **${snap.apBillsCount} AP bills queued**${setupHint}\n\n**3 questions you can ask me right now:**\n1. ${suggestedPrompts[0]}\n2. ${suggestedPrompts[1]}\n3. ${suggestedPrompts[2]}`;
+        ? `Hello! I am **float. Treasury Advisory Copilot** monitoring **${snap.companyName}**.\n- ${cashLine}\n- ${dealLine} | ${ledgerLine}\n- Try asking: ${suggestedPrompts[0]} or ${suggestedPrompts[1]}`
+        : `Hello! I am **float. Treasury Advisory Copilot**.\n\n**Current Live Workspace Snapshot (${snap.companyName}):**\n- ${cashLine}\n- ${dealLine}\n- ${ledgerLine}\n- GST & AP Books: **${snap.vendorBillsCount} vendor bills** audited | **${snap.tdsCount} TDS 26AS items** | **${snap.apBillsCount} AP bills queued**${setupHint}\n\n**3 questions you can ask me right now:**\n1. ${suggestedPrompts[0]}\n2. ${suggestedPrompts[1]}\n3. ${suggestedPrompts[2]}`;
 
     return {
       content: body,
@@ -536,16 +536,16 @@ export function generateCopilotTurnResponse(opts: {
       `2. Executed calibrated risk model using live treasury baseline (${fmtINR(snap.bankBalance)} cash, ${fmtINR(snap.monthlyBurn)} monthly burn).`
     );
     thinkingTrace.push(
-      `3. Output: ${simResult.blendedRiskPercent.toFixed(1)}% late risk, expected arrival Day ${simResult.expectedArrivalDay} (P20–P80: Day ${simResult.arrivalWindowLow}–${simResult.arrivalWindowHigh}).`
+      `3. Output: ${simResult.blendedRiskPercent.toFixed(1)}% late risk, expected arrival Day ${simResult.expectedArrivalDay} (P20-P80: Day ${simResult.arrivalWindowLow}-${simResult.arrivalWindowHigh}).`
     );
 
     let content = '';
     if (replyDepth === 'cfo_brief') {
-      content = `**What-If Deal Verdict (${fmtINR(whatIfDeal.invoiceAmount)} • Net-${whatIfDeal.paymentTermDays}):**\n- **Delay Probability:** **${simResult.blendedRiskPercent.toFixed(1)}% (${riskTier} RISK)** — cash likely lands on **Day ${simResult.expectedArrivalDay}** (P20–P80: Day ${simResult.arrivalWindowLow}–${simResult.arrivalWindowHigh}).\n- **Recommended Structure:** **${simResult.recommendedTerms.badgeLabel}** (cuts capital exposure by ${simResult.recommendedTerms.exposureReductionPercent}%).\n- **Day-1 Liquidity Option:** TReDS factoring unlocks **${fmtINR(treds.netImmediateCashPayout)}** immediately at 8.5% p.a. (${fmtINR(treds.grossDiscountCost)} cost).`;
+      content = `**What-If Deal Verdict (${fmtINR(whatIfDeal.invoiceAmount)} • Net-${whatIfDeal.paymentTermDays}):**\n- **Delay Probability:** **${simResult.blendedRiskPercent.toFixed(1)}% (${riskTier} RISK)** - cash likely lands on **Day ${simResult.expectedArrivalDay}** (P20-P80: Day ${simResult.arrivalWindowLow}-${simResult.arrivalWindowHigh}).\n- **Recommended Structure:** **${simResult.recommendedTerms.badgeLabel}** (cuts capital exposure by ${simResult.recommendedTerms.exposureReductionPercent}%).\n- **Day-1 Liquidity Option:** TReDS factoring unlocks **${fmtINR(treds.netImmediateCashPayout)}** immediately at 8.5% p.a. (${fmtINR(treds.grossDiscountCost)} cost).`;
     } else if (replyDepth === 'action_plan') {
       content = `### Action Plan: ${fmtINR(whatIfDeal.invoiceAmount)} Net-${whatIfDeal.paymentTermDays} Order\n\n1. **Restructure Payment Milestones:** Propose **${simResult.recommendedTerms.badgeLabel}** (${simResult.recommendedTerms.rationale}).\n2. **Lock Section 43B(h) Enforcement:** Cap final credit at 45 days via written PO acceptance (triggers **${fmtINR(sec43.extraTaxPayableByBuyer)}** tax disallowance penalty on buyer if delayed).\n3. **De-Risk Day-${simResult.expectedArrivalDay} Drift:** Upload the invoice to RXIL / M1xchange TReDS if cash is needed on Day 1 for **${fmtINR(treds.netImmediateCashPayout)}** net payout.`;
     } else {
-      content = `### What-If Deal Evaluation: ${fmtINR(whatIfDeal.invoiceAmount)} (Net-${whatIfDeal.paymentTermDays})\n\n- **Calibrated Late Payment Risk:** **${simResult.blendedRiskPercent.toFixed(1)}%** (${riskTier} RISK)\n- **Expected Cash Arrival:** **Day ${simResult.expectedArrivalDay}** (P20–P80 range: Day ${simResult.arrivalWindowLow} to Day ${simResult.arrivalWindowHigh})\n- **Recommended Counter-Terms:** **${simResult.recommendedTerms.badgeLabel}** — reduces working-capital exposure by **${simResult.recommendedTerms.exposureReductionPercent}%**\n- **TReDS Day-1 Factoring Net Payout (8.5% p.a.):** **${fmtINR(treds.netImmediateCashPayout)}** (discount cost ${fmtINR(treds.grossDiscountCost)})\n- **Section 43B(h) Statutory Leverage:** Buyer loses **${fmtINR(sec43.extraTaxPayableByBuyer)}** in corporate tax deduction if unpaid past Day 45\n\n**Mandated Contract Clause:**\n> ${simResult.recommendedTerms.contractClause}`;
+      content = `### What-If Deal Evaluation: ${fmtINR(whatIfDeal.invoiceAmount)} (Net-${whatIfDeal.paymentTermDays})\n\n- **Calibrated Late Payment Risk:** **${simResult.blendedRiskPercent.toFixed(1)}%** (${riskTier} RISK)\n- **Expected Cash Arrival:** **Day ${simResult.expectedArrivalDay}** (P20-P80 range: Day ${simResult.arrivalWindowLow} to Day ${simResult.arrivalWindowHigh})\n- **Recommended Counter-Terms:** **${simResult.recommendedTerms.badgeLabel}** - reduces working-capital exposure by **${simResult.recommendedTerms.exposureReductionPercent}%**\n- **TReDS Day-1 Factoring Net Payout (8.5% p.a.):** **${fmtINR(treds.netImmediateCashPayout)}** (discount cost ${fmtINR(treds.grossDiscountCost)})\n- **Section 43B(h) Statutory Leverage:** Buyer loses **${fmtINR(sec43.extraTaxPayableByBuyer)}** in corporate tax deduction if unpaid past Day 45\n\n**Mandated Contract Clause:**\n> ${simResult.recommendedTerms.contractClause}`;
     }
 
     return {
@@ -608,7 +608,7 @@ export function generateCopilotTurnResponse(opts: {
 
     if (baseAmt <= 0) {
       return {
-        content: `No invoice principal is currently loaded in your workspace (\`₹0\`).\n\nEnter a deal in **Deal Underwriting**, load a Demo Preset, or ask me directly with an amount — e.g. *"Compare a 2% early discount vs TReDS on a ₹5,00,000 Net-45 invoice"*.`,
+        content: `No invoice principal is currently loaded in your workspace (\`₹0\`).\n\nEnter a deal in **Deal Underwriting**, load a Demo Preset, or ask me directly with an amount - e.g. *"Compare a 2% early discount vs TReDS on a ₹5,00,000 Net-45 invoice"*.`,
         thinkingTrace: ['1. Checked active deal and ledger for principal amount; workspace is currently blank (₹0).'],
         toolsUsed: [],
       };
@@ -636,7 +636,7 @@ export function generateCopilotTurnResponse(opts: {
         ? `**Financing & Early-Discount Verdict (${fmtINR(baseAmt)}):**\n- **2% Cash Discount Cost:** Costs **${fmtINR(cmp.discountCashCost)}** (**${cmp.annualizedDiscountApr}% APR** vs your ${snap.odRate}% Bank OD rate).\n- **Optimal Dynamic Discount:** Solver recommends **${solver.optimal_discount_pct}%** for 5-day settlement (saving **${fmtINR(solver.net_benefit_vs_bank_od)}** vs OD cost).\n- **TReDS Factoring Alternative:** Receiving Day-1 liquidity on RXIL/M1xchange costs **${fmtINR(cmp.tredsCost)}** at **8.5% APR** with zero buyer default risk.`
         : replyDepth === 'action_plan'
         ? `### Financing Execution Steps (${fmtINR(baseAmt)})\n\n1. **Avoid Flat 2% Blanket Discounts:** A 2% haircut for ${cmp.daysAccelerated} days early settlement equals **${cmp.annualizedDiscountApr}% APR** (**${fmtINR(cmp.discountCashCost)}** lost).\n2. **Counter with Optimal Tier (${solver.optimal_discount_pct}%):** Offer **${solver.optimal_discount_pct}%** for Day-5 settlement (**${fmtINR(solver.optimal_discount_cost)}** cost), unlocking **${fmtINR(solver.immediate_cash_inflow)}** immediately.\n3. **Keep TReDS / Bank CC Ready:** Benchmark against **8.5% APR TReDS (${fmtINR(cmp.tredsCost)})** or your **${snap.odRate}% Bank CC (${fmtINR(cmp.bankOdCost)})** before conceding more than ${solver.optimal_discount_pct}%.`
-        : `### Early Settlement Discount vs TReDS vs Bank Overdraft (${fmtINR(baseAmt)} • Net-${baseTerm})\n\n- **Option A — 2.0% Buyer Cash Discount (Day ${earlyDay}):** **${fmtINR(cmp.discountCashCost)}** cash sacrificed → **${cmp.annualizedDiscountApr}% annualized APR**\n- **Option B — RBI TReDS Factoring (8.5% p.a.):** **${fmtINR(cmp.tredsCost)}** (saves **${fmtINR(Math.max(0, cmp.discountCashCost - cmp.tredsCost))}** vs 2% discount, 100% risk offloaded)\n- **Option C — Bank OD / CC Draw (${snap.odRate}% p.a.):** **${fmtINR(cmp.bankOdCost)}**\n- **Dynamic Discount Solver Recommendation:** **${solver.optimal_discount_pct}%** for Day-5 settlement (${solver.annualized_discount_apr}% APR, net arbitrage gain **${fmtINR(solver.net_benefit_vs_bank_od)}**)`;
+        : `### Early Settlement Discount vs TReDS vs Bank Overdraft (${fmtINR(baseAmt)} • Net-${baseTerm})\n\n- **Option A - 2.0% Buyer Cash Discount (Day ${earlyDay}):** **${fmtINR(cmp.discountCashCost)}** cash sacrificed → **${cmp.annualizedDiscountApr}% annualized APR**\n- **Option B - RBI TReDS Factoring (8.5% p.a.):** **${fmtINR(cmp.tredsCost)}** (saves **${fmtINR(Math.max(0, cmp.discountCashCost - cmp.tredsCost))}** vs 2% discount, 100% risk offloaded)\n- **Option C - Bank OD / CC Draw (${snap.odRate}% p.a.):** **${fmtINR(cmp.bankOdCost)}**\n- **Dynamic Discount Solver Recommendation:** **${solver.optimal_discount_pct}%** for Day-5 settlement (${solver.annualized_discount_apr}% APR, net arbitrage gain **${fmtINR(solver.net_benefit_vs_bank_od)}**)`;
 
     return {
       content,
@@ -688,10 +688,10 @@ export function generateCopilotTurnResponse(opts: {
 
     const content =
       replyDepth === 'cfo_brief'
-        ? `**Receivables Ledger Brief (${snap.ledgerCount} Invoices):**\n- **Total Open Book:** **${fmtINR(snap.ledgerTotal)}** | **Overdue:** **${fmtINR(snap.overdueTotal)}** (${snap.overdueCount} invoices).\n- **Buyer Concentration:** **${conc.topBuyerName}** represents **${conc.topBuyerSharePercent.toFixed(1)}%** of your book (HHI **${conc.hhiScore}** — **${conc.riskCategory.replace(/_/g, ' ')}**).\n- **Statutory Claim:** Overdue accounts have accrued **${fmtINR(totalMsmeClaim)}** in MSMED Section 16 compound interest (20.25% p.a.).`
+        ? `**Receivables Ledger Brief (${snap.ledgerCount} Invoices):**\n- **Total Open Book:** **${fmtINR(snap.ledgerTotal)}** | **Overdue:** **${fmtINR(snap.overdueTotal)}** (${snap.overdueCount} invoices).\n- **Buyer Concentration:** **${conc.topBuyerName}** represents **${conc.topBuyerSharePercent.toFixed(1)}%** of your book (HHI **${conc.hhiScore}** - **${conc.riskCategory.replace(/_/g, ' ')}**).\n- **Statutory Claim:** Overdue accounts have accrued **${fmtINR(totalMsmeClaim)}** in MSMED Section 16 compound interest (20.25% p.a.).`
         : replyDepth === 'action_plan'
         ? `### Receivables Collection & De-Concentration Plan\n\n1. **Chase ${snap.overdueCount} Overdue Accounts (${fmtINR(snap.overdueTotal)}):** Dispatch Section 43B(h) + MSMED Sec 16 notices claiming **${fmtINR(totalMsmeClaim)}** accrued penal interest.\n2. **Cap Single-Buyer Exposure (${conc.topBuyerName}):** Currently at **${conc.topBuyerSharePercent.toFixed(1)}%** (vs 20% prudent MSME cap); require 25%+ advance on incremental orders.\n3. **Route Verified Blue-Chip Invoices to TReDS:** Unlock early cash without increasing customer concentration risk.`
-        : `### Live Receivables Ageing & Concentration Audit\n\n- **Total Open Receivables:** **${fmtINR(snap.ledgerTotal)}** across **${snap.ledgerCount} invoices**\n- **Overdue Balance:** **${fmtINR(snap.overdueTotal)}** across **${snap.overdueCount} overdue invoices**\n- **Accrued MSMED Section 16 Interest (20.25% p.a.):** **${fmtINR(totalMsmeClaim)}**\n- **Top Counterparty Share:** **${conc.topBuyerName}** holds **${fmtINR(conc.topBuyerExposure)} (${conc.topBuyerSharePercent.toFixed(1)}%)**\n- **Portfolio Herfindahl Index (HHI):** **${conc.hhiScore} pts** — Tier: **${conc.riskCategory.replace(/_/g, ' ')}**`;
+        : `### Live Receivables Ageing & Concentration Audit\n\n- **Total Open Receivables:** **${fmtINR(snap.ledgerTotal)}** across **${snap.ledgerCount} invoices**\n- **Overdue Balance:** **${fmtINR(snap.overdueTotal)}** across **${snap.overdueCount} overdue invoices**\n- **Accrued MSMED Section 16 Interest (20.25% p.a.):** **${fmtINR(totalMsmeClaim)}**\n- **Top Counterparty Share:** **${conc.topBuyerName}** holds **${fmtINR(conc.topBuyerExposure)} (${conc.topBuyerSharePercent.toFixed(1)}%)**\n- **Portfolio Herfindahl Index (HHI):** **${conc.hhiScore} pts** - Tier: **${conc.riskCategory.replace(/_/g, ' ')}**`;
 
     return {
       content,
@@ -751,7 +751,7 @@ export function generateCopilotTurnResponse(opts: {
         ? `**60-Day Cash Runway Brief:**\n- **Starting Cash vs Burn:** **${fmtINR(snap.bankBalance)}** cash vs **${fmtINR(snap.monthlyBurn)}/mo** fixed burn (scheduled inflow **${fmtINR(receivablePool)}** on Day ${inflowDay}).\n- **Lowest Point:** **${fmtINR(sim.minCashPoint)}** on **Day ${sim.minCashDay}** (${hasCollision ? 'CRITICAL CASH DEFICIT' : 'Positive buffer maintained'}).\n- **Day-60 Projected Balance:** **${fmtINR(sim.endingCashDay60)}**${nayak.workingCapitalGap > 0 ? ` (untapped RBI Nayak CC eligibility: +${fmtINR(nayak.workingCapitalGap)})` : ''}.`
         : replyDepth === 'action_plan'
         ? `### Treasury Liquidity Action Plan\n\n1. **Protect Day-7 Payroll (${fmtINR(Math.round(snap.monthlyBurn * 0.45))}) & Day-20 GST:** Monitor cash dipping to **${fmtINR(sim.minCashPoint)}** on **Day ${sim.minCashDay}**.\n2. ${hasCollision ? `**Close ${fmtINR(Math.abs(sim.minCashPoint))} Deficit Before Day ${sim.minCashDay}:** Accelerate ${fmtINR(receivablePool)} collection via dynamic discounting or draw on your **${fmtINR(snap.ccLimit)}** Cash Credit limit.` : `**Preserve Safe Reserve (${fmtINR(snap.monthlyBurn)}):** Prioritize Section 43B(h) & Section 16(2) AP vendor bills first (${snap.apBillsCount} bills queued: ${fmtINR(snap.apTotal)}).`}\n3. **Bank Limit Benchmarking:** Check **${fmtINR(Math.max(0, nayak.workingCapitalGap))}** additional working-capital headroom under the RBI Nayak 20% turnover norm.`
-        : `### 60-Day Live Treasury Runway Projection\n\n- **Opening Bank Balance:** **${fmtINR(snap.bankBalance)}**\n- **Monthly Fixed Operating Burn:** **${fmtINR(snap.monthlyBurn)}** (Payroll 45%, GST 25%, Rent 15%, TDS 8%)\n- **Modeled Receivable Inflow:** **${fmtINR(receivablePool)}** arriving on **Day ${inflowDay}**\n- **Minimum Cash Trough:** **${fmtINR(sim.minCashPoint)}** on **Day ${sim.minCashDay}** (${hasCollision ? '⚠️ Below Zero — Payroll/GST Collision Risk' : '✅ Solvent throughout 60-day window'})\n- **Projected Day-60 Balance:** **${fmtINR(sim.endingCashDay60)}**\n- **Queued AP Payables:** **${snap.apBillsCount} bills** totaling **${fmtINR(snap.apTotal)}**`;
+        : `### 60-Day Live Treasury Runway Projection\n\n- **Opening Bank Balance:** **${fmtINR(snap.bankBalance)}**\n- **Monthly Fixed Operating Burn:** **${fmtINR(snap.monthlyBurn)}** (Payroll 45%, GST 25%, Rent 15%, TDS 8%)\n- **Modeled Receivable Inflow:** **${fmtINR(receivablePool)}** arriving on **Day ${inflowDay}**\n- **Minimum Cash Trough:** **${fmtINR(sim.minCashPoint)}** on **Day ${sim.minCashDay}** (${hasCollision ? '⚠️ Below Zero - Payroll/GST Collision Risk' : '✅ Solvent throughout 60-day window'})\n- **Projected Day-60 Balance:** **${fmtINR(sim.endingCashDay60)}**\n- **Queued AP Payables:** **${snap.apBillsCount} bills** totaling **${fmtINR(snap.apTotal)}**`;
 
     return {
       content,
@@ -808,7 +808,7 @@ export function generateCopilotTurnResponse(opts: {
 
     const noticeText =
       dealVal > 0 && msmeClaim && sec43
-        ? `FORMAL DEMAND NOTICE — MSMED ACT 2006 & SEC 43B(h) INCOME TAX ACT\nCounterparty: ${snap.activeDealClient}\nUnpaid Principal: ${fmtINR(dealVal)}\nAccrued Sec 16 Compound Interest (20.25% p.a.): ${fmtINR(msmeClaim.accruedPenalInterest)}\nBuyer Tax Disallowance Under Sec 43B(h): ${fmtINR(sec43.extraTaxPayableByBuyer)} + Form 3CD Clause 22 Disclosure\nRemit principal + statutory interest immediately.`
+        ? `FORMAL DEMAND NOTICE - MSMED ACT 2006 & SEC 43B(h) INCOME TAX ACT\nCounterparty: ${snap.activeDealClient}\nUnpaid Principal: ${fmtINR(dealVal)}\nAccrued Sec 16 Compound Interest (20.25% p.a.): ${fmtINR(msmeClaim.accruedPenalInterest)}\nBuyer Tax Disallowance Under Sec 43B(h): ${fmtINR(sec43.extraTaxPayableByBuyer)} + Form 3CD Clause 22 Disclosure\nRemit principal + statutory interest immediately.`
         : undefined;
 
     if (!hasGstData) {
@@ -854,7 +854,7 @@ export function generateCopilotTurnResponse(opts: {
     const nayak = calculateNayakWorkingCapital(state.enterpriseProfile.annualTurnover || 0, snap.ccLimit);
     thinkingTrace.push(`1. Read live Enterprise Profile (${snap.companyName}), OD rate ${snap.odRate}%, CC Limit ${fmtINR(snap.ccLimit)}.`);
 
-    const content = `### Active Enterprise & Adapter Profile\n\n- **Entity:** **${snap.companyName}** (${snap.msmeCategory} MSME)\n- **Cash Credit / OD Facility:** **${fmtINR(snap.ccLimit)}** @ **${snap.odRate}% p.a.** | Gross Margin Baseline: **${snap.grossMargin}%**\n- **RBI Nayak 20% Entitlement:** **${fmtINR(nayak.maxPermissibleBankFinance)}** (${nayak.workingCapitalGap > 0 ? `+${fmtINR(nayak.workingCapitalGap)} untapped headroom` : 'at or above norm'})\n- **Custom Business Adapter:** ${snap.customAdapterActive ? `**ACTIVE** (${snap.customRecordsCount} historical invoice records indexed)` : 'Inactive — train custom weights in **Business & Planning**'}`;
+    const content = `### Active Enterprise & Adapter Profile\n\n- **Entity:** **${snap.companyName}** (${snap.msmeCategory} MSME)\n- **Cash Credit / OD Facility:** **${fmtINR(snap.ccLimit)}** @ **${snap.odRate}% p.a.** | Gross Margin Baseline: **${snap.grossMargin}%**\n- **RBI Nayak 20% Entitlement:** **${fmtINR(nayak.maxPermissibleBankFinance)}** (${nayak.workingCapitalGap > 0 ? `+${fmtINR(nayak.workingCapitalGap)} untapped headroom` : 'at or above norm'})\n- **Custom Business Adapter:** ${snap.customAdapterActive ? `**ACTIVE** (${snap.customRecordsCount} historical invoice records indexed)` : 'Inactive - train custom weights in **Business & Planning**'}`;
 
     return {
       content,
@@ -895,10 +895,10 @@ export function generateCopilotTurnResponse(opts: {
 
     const content =
       replyDepth === 'cfo_brief'
-        ? `**Active Deal Brief (${snap.activeDealClient} • ${fmtINR(snap.activeDealAmount)}):**\n- **Delay Probability:** **${res.blendedRiskPercent.toFixed(1)}% (${tier} RISK)** — cash expected on **Day ${res.expectedArrivalDay}** (vs Net-${snap.activeDealTerms}).\n- **Recommended Split:** **${res.recommendedTerms.badgeLabel}** (cuts working-capital exposure **${res.recommendedTerms.exposureReductionPercent}%**).\n- **Treasury Buffer:** ${res.isRunwayCollision ? `**RUNWAY COLLISION** on Day ${res.collisionDay}` : `Buffer safe (**+${fmtINR(res.cashBufferAtArrival)}** at arrival)`}.`
+        ? `**Active Deal Brief (${snap.activeDealClient} • ${fmtINR(snap.activeDealAmount)}):**\n- **Delay Probability:** **${res.blendedRiskPercent.toFixed(1)}% (${tier} RISK)** - cash expected on **Day ${res.expectedArrivalDay}** (vs Net-${snap.activeDealTerms}).\n- **Recommended Split:** **${res.recommendedTerms.badgeLabel}** (cuts working-capital exposure **${res.recommendedTerms.exposureReductionPercent}%**).\n- **Treasury Buffer:** ${res.isRunwayCollision ? `**RUNWAY COLLISION** on Day ${res.collisionDay}` : `Buffer safe (**+${fmtINR(res.cashBufferAtArrival)}** at arrival)`}.`
         : replyDepth === 'action_plan'
-        ? `### Deal Negotiation Action Plan (${snap.activeDealClient})\n\n1. **Send Counter-Proposal:** **${res.recommendedTerms.badgeLabel}** (${res.recommendedTerms.rationale}).\n2. **Insert Statutory Clause:** *${res.recommendedTerms.contractClause}*\n3. **Mitigate ${res.expectedArrivalDay - snap.activeDealTerms}d Predicted Slippage:** ${res.isRunwayCollision ? `Collision detected on Day ${res.collisionDay} — discount on TReDS or require upfront advance before production.` : `Keep TReDS (8.5% p.a.) ready if buyer exceeds Day ${snap.activeDealTerms}.`}`
-        : `### Active Deal Risk Dossier: ${snap.activeDealClient}\n\n- **Invoice Principal & Terms:** **${fmtINR(snap.activeDealAmount)}** on **Net-${snap.activeDealTerms}**\n- **Late-Payment Risk Score:** **${res.blendedRiskPercent.toFixed(1)}% (${tier} RISK)**\n- **Predicted Arrival Window:** **Day ${res.expectedArrivalDay}** (P20–P80: Day ${res.arrivalWindowLow}–${res.arrivalWindowHigh})\n- **Recommended Terms:** **${res.recommendedTerms.badgeLabel}** (${res.recommendedTerms.exposureReductionPercent}% exposure reduction)\n- **GST ITC Locked (Sec 16(2)):** **${fmtINR(res.gstItcLocked)}** | **Treasury Status:** ${res.isRunwayCollision ? `Collision on Day ${res.collisionDay}` : `+${fmtINR(res.cashBufferAtArrival)} buffer`}`;
+        ? `### Deal Negotiation Action Plan (${snap.activeDealClient})\n\n1. **Send Counter-Proposal:** **${res.recommendedTerms.badgeLabel}** (${res.recommendedTerms.rationale}).\n2. **Insert Statutory Clause:** *${res.recommendedTerms.contractClause}*\n3. **Mitigate ${res.expectedArrivalDay - snap.activeDealTerms}d Predicted Slippage:** ${res.isRunwayCollision ? `Collision detected on Day ${res.collisionDay} - discount on TReDS or require upfront advance before production.` : `Keep TReDS (8.5% p.a.) ready if buyer exceeds Day ${snap.activeDealTerms}.`}`
+        : `### Active Deal Risk Dossier: ${snap.activeDealClient}\n\n- **Invoice Principal & Terms:** **${fmtINR(snap.activeDealAmount)}** on **Net-${snap.activeDealTerms}**\n- **Late-Payment Risk Score:** **${res.blendedRiskPercent.toFixed(1)}% (${tier} RISK)**\n- **Predicted Arrival Window:** **Day ${res.expectedArrivalDay}** (P20-P80: Day ${res.arrivalWindowLow}-${res.arrivalWindowHigh})\n- **Recommended Terms:** **${res.recommendedTerms.badgeLabel}** (${res.recommendedTerms.exposureReductionPercent}% exposure reduction)\n- **GST ITC Locked (Sec 16(2)):** **${fmtINR(res.gstItcLocked)}** | **Treasury Status:** ${res.isRunwayCollision ? `Collision on Day ${res.collisionDay}` : `+${fmtINR(res.cashBufferAtArrival)} buffer`}`;
 
     return {
       content,

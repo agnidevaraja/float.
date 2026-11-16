@@ -24,7 +24,7 @@ import {
   DEMO_TDS_ITEMS,
   DEMO_AP_BILLS,
   DEMO_PLANNER_ROWS,
-} from '../data/demoPresets';
+} from './demoPresets';
 
 const DK_DEFAULTS = 'veritas-treasury-defaults';
 const DK_LEDGER = 'veritas-portfolio-ledger';
@@ -268,7 +268,7 @@ const DEFAULT_WELCOME_MSG: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    'I am **float. AI Risk & Treasury Copilot**. Ask me about an evaluated deal, your cash runway, open receivables ageing, Section 43B(h) / GST ITC compliance, or run a what-if scenario — or just say hello to see your live workspace snapshot.',
+    'I am **float. Treasury Advisory Copilot**. Ask me about an evaluated deal, your cash runway, open receivables ageing, Section 43B(h) / GST ITC compliance, or run a what-if scenario - or just say hello to see your live workspace snapshot.',
   timestamp: new Date(),
 };
 

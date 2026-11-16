@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Homepage } from './components/layout/Homepage';
 import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { WorkspaceProvider } from './store/workspaceStore';
 
 export const App: React.FC = () => {

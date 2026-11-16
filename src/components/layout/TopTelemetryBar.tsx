@@ -2,8 +2,8 @@ import React from 'react';
 import { PanelLeft, Command, Building2 } from 'lucide-react';
 import { type ThemeState } from '../../store/themeStore';
 import { useWorkspace } from '../../store/workspaceStore';
-import { FLOAT_METRICS } from '../../data/metrics';
-import { loadApiConfig } from '../../services/inferenceBridge';
+import { FLOAT_METRICS } from '../../utils/metrics';
+import { loadApiConfig } from '../../engine/inferenceBridge';
 
 interface TopTelemetryBarProps {
   activeView: string;
@@ -27,7 +27,7 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
     ageing: 'Ageing Matrix & Receivable Ledger',
     gst: 'GST Compliance & Section 16(2) ITC',
     benchmarks: 'Model Benchmarks & Fairness Audit',
-    copilot: 'AI Risk Copilot',
+    copilot: 'Treasury Advisory Copilot',
     'business-planner': 'Business & Working-Capital Planner',
     settings: 'Settings & Model Bridge',
   };
@@ -68,7 +68,7 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
             title={
               state.enterpriseProfile.companyName
                 ? `Company: ${state.enterpriseProfile.companyName}`
-                : 'Enterprise Profile not configured — click Settings to configure or load demo'
+                : 'Enterprise Profile not configured - click Settings to configure or load demo'
             }
           >
             <Building2 className="w-3.5 h-3.5 text-[var(--accent-primary)]" />

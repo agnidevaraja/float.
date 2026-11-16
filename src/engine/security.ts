@@ -1,4 +1,4 @@
-import type { DealInput } from '../types';
+import type { DealInput } from '../types/deal';
 
 /**
  * Sanitizes input cells from uploaded CSV files to prevent

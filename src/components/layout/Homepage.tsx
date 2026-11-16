@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, ArrowRight, Database, Cpu, TrendingUp, Layers, Globe } from 'lucide-react';
-import { Wordmark } from '../primitives/Wordmark';
-import { FLOAT_METRICS } from '../../data/metrics';
+import { Wordmark } from '../common/Wordmark';
+import { FLOAT_METRICS } from '../../utils/metrics';
 
 interface StatCardProps {
   label: string;
@@ -54,7 +54,7 @@ export const Homepage: React.FC = () => {
             <span className="text-[var(--accent-primary)]">Before Your Cash Runs Out</span>
           </h1>
           <p className="text-sm font-sans text-[var(--text-muted)] leading-relaxed mb-8 max-w-xl">
-            Profitable small businesses go bankrupt when large corporate buyers pay 15–60 days late while salaries, rent, TDS, and GST still leave the bank on fixed dates. Trained on {FLOAT_METRICS.totalRecordsFormatted} records across {FLOAT_METRICS.dataSourcesCount} public datasets ({FLOAT_METRICS.featuresCount} features), <span className="font-semibold text-[var(--text-primary)]">float.</span> predicts when an invoice will actually be paid, flags cash shortfalls weeks in advance, and drafts the exact payment terms or legal reminders you need to stay solvent.
+            Profitable small businesses go bankrupt when large corporate buyers pay 15-60 days late while salaries, rent, TDS, and GST still leave the bank on fixed dates. Trained on {FLOAT_METRICS.totalRecordsFormatted} records across {FLOAT_METRICS.dataSourcesCount} public datasets ({FLOAT_METRICS.featuresCount} features), <span className="font-semibold text-[var(--text-primary)]">float.</span> predicts when an invoice will actually be paid, flags cash shortfalls weeks in advance, and drafts the exact payment terms or legal reminders you need to stay solvent.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
@@ -125,10 +125,10 @@ export const Homepage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { num: '01', title: 'Deal Underwriting', desc: 'Check late-payment probability, expected payout day, SHAP risk drivers, and safer milestone terms before signing an order.' },
-            { num: '02', title: 'Cash Flow & Runway Lab', desc: 'Simulate 60 days of bank balance against payroll, rent, TDS, and GST—plus calculate early-settlement discounts and vendor payouts.' },
+            { num: '02', title: 'Cash Flow & Runway Lab', desc: 'Simulate 60 days of bank balance against payroll, rent, TDS, and GST, plus calculate early-settlement discounts and vendor payouts.' },
             { num: '03', title: 'Ageing Matrix & Ledger', desc: 'Track overdue customer bills across 5 ageing buckets, upload or export CSV ledgers, and generate formal collection notices.' },
             { num: '04', title: 'GST Compliance & ITC Shield', desc: 'Reconcile GSTR-2B credits, track the 180-day Section 16(2) reversal clock, and calculate Section 43B(h) buyer tax leverage.' },
-            { num: '05', title: 'AI Risk Copilot', desc: 'Ask plain-English questions about any invoice, cash shortfall, or tax rule and get answers grounded in your live numbers.' },
+            { num: '05', title: 'Treasury Advisory Copilot', desc: 'Ask plain-English questions about any invoice, cash shortfall, or tax rule and get answers grounded in your live numbers.' },
             { num: '06', title: 'Benchmarks, Planner & Settings', desc: `Inspect our ${FLOAT_METRICS.rocAucFormatted} ROC-AUC / ${FLOAT_METRICS.prAucFormatted} PR-AUC benchmarks, adapt the model to your own CSV ledger, or connect a live Colab GPU.` },
           ].map((mod) => (
             <div
@@ -147,7 +147,7 @@ export const Homepage: React.FC = () => {
       {/* Footer */}
       <footer className="max-w-[1440px] mx-auto border-t border-[var(--border-hairline)] px-6 py-5">
         <p className="text-[11px] font-sans text-[var(--text-tertiary)] text-center">
-          <span className="font-display font-bold text-[var(--text-primary)]">float.</span> TREASURY &amp; RECEIVABLES OS — Trained on{' '}
+          <span className="font-display font-bold text-[var(--text-primary)]">float.</span> TREASURY &amp; RECEIVABLES PLATFORM - Trained on{' '}
           <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.totalRecordsFormatted}</span> public records across{' '}
           <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.dataSourcesCount} Data Sources</span> &amp;{' '}
           <span className="font-mono text-[var(--text-muted)]">{FLOAT_METRICS.featuresCount} Features</span> (Kaggle B2B, Corporate Bankruptcy, UCI Credit, FRED Macro, World Bank, OpenML). Does not constitute financial, legal, credit, or tax advice.
