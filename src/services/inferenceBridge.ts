@@ -40,11 +40,18 @@ export interface BridgeProbeResult {
 }
 
 export function loadApiConfig(): ApiConfig {
+  const envDefault = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || '';
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        ...parsed,
+        endpointUrl: parsed.endpointUrl !== undefined && parsed.endpointUrl !== '' ? parsed.endpointUrl : envDefault,
+      };
+    }
   } catch { /* ignore */ }
-  return { endpointUrl: '', timeoutMs: 8000, autoFallback: true };
+  return { endpointUrl: envDefault, timeoutMs: 8000, autoFallback: true };
 }
 
 export function saveApiConfig(config: ApiConfig): void {
