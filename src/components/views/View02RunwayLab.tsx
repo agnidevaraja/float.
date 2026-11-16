@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useWorkspace } from '../../store/workspaceStore';
 import { EChartBox } from '../charts/EChartBox';
 import { SegmentedTabs } from '../primitives/SegmentedTabs';
@@ -44,7 +44,7 @@ const fmt = (v: number) =>
     maximumFractionDigits: 0,
   }).format(v);
 
-const DEFAULT_AP_BILLS: ApVendorBill[] = [
+export const DEFAULT_AP_BILLS: ApVendorBill[] = [
   {
     id: 'BILL-7821',
     vendorName: 'Apex Precision Castings Pvt Ltd',
@@ -105,37 +105,53 @@ const DEFAULT_AP_BILLS: ApVendorBill[] = [
 ];
 
 export const View02RunwayLab: React.FC = () => {
-  const { state } = useWorkspace();
+  const { state, dispatch } = useWorkspace();
 
   const input = state.intake;
   const result = state.currentResult;
 
-  // Active Inputs
-  const [bankBalance, setBankBalance] = useState<number>(input.currentBankBalance || 350000);
-  const [monthlyBurn, setMonthlyBurn] = useState<number>(input.monthlyFixedExpenses || 160000);
-  const [expectedReceivables, setExpectedReceivables] = useState<number>(
-    result ? input.invoiceAmount : (input.invoiceAmount || 280000)
+  // Live Treasury & Receivables state synchronized with workspaceStore
+  const bankBalance = state.treasuryDefaults.currentBankBalance;
+  const monthlyBurn = state.treasuryDefaults.monthlyFixedExpenses;
+  const ledgerTotal = useMemo(
+    () => state.ledger.reduce((acc, item) => acc + item.invoiceAmount, 0),
+    [state.ledger]
   );
+  const expectedReceivables = input.invoiceAmount > 0 ? input.invoiceAmount : ledgerTotal;
 
   // Scenario Mode: 'promised' | 'predicted' | 'shock'
   const [scenarioMode, setScenarioMode] = useState<'promised' | 'predicted' | 'shock'>('predicted');
 
-  // Working Capital Cycle Inputs
-  const [inventoryDays, setInventoryDays] = useState<number>(22);
-  const [payableDays, setPayableDays] = useState<number>(28);
+  // Working Capital Cycle Inputs (persisted in workspaceStore.runwayState)
+  const inventoryDays = state.runwayState.inventoryDays;
+  const setInventoryDays = (v: number) =>
+    dispatch({ type: 'SET_RUNWAY_STATE', payload: { inventoryDays: v } });
+  const payableDays = state.runwayState.payableDays;
+  const setPayableDays = (v: number) =>
+    dispatch({ type: 'SET_RUNWAY_STATE', payload: { payableDays: v } });
 
-  // Accounts Payable (AP) Cash Dispatch Engine State
-  const [availableApCash, setAvailableApCash] = useState<number>(650000);
-  const [apBills, setApBills] = useState<ApVendorBill[]>(DEFAULT_AP_BILLS);
+  // Accounts Payable (AP) Cash Dispatch Engine State (persisted in workspaceStore.runwayState)
+  const [availableApCash, setAvailableApCash] = useState<number>(
+    state.treasuryDefaults.currentBankBalance
+  );
+  useEffect(() => {
+    setAvailableApCash(state.treasuryDefaults.currentBankBalance);
+  }, [state.treasuryDefaults.currentBankBalance]);
+
+  const apBills = state.runwayState.apBills;
   const [copiedRtgs, setCopiedRtgs] = useState<boolean>(false);
   const apRunResult = useMemo(
     () => calculateApCashAllocation(availableApCash, apBills),
     [availableApCash, apBills]
   );
 
-  // RBI Nayak Committee Working Capital Benchmark State
-  const [annualTurnover, setAnnualTurnover] = useState<number>(30000000); // ₹3 Crore
-  const [currentCcLimit, setCurrentCcLimit] = useState<number>(3500000); // ₹35 Lakh
+  // RBI Nayak Committee Working Capital Benchmark State (synced with Enterprise Profile)
+  const annualTurnover = state.enterpriseProfile.annualTurnover;
+  const setAnnualTurnover = (v: number) =>
+    dispatch({ type: 'SET_ENTERPRISE_PROFILE', payload: { annualTurnover: v } });
+  const currentCcLimit = state.enterpriseProfile.sanctionedCcLimit;
+  const setCurrentCcLimit = (v: number) =>
+    dispatch({ type: 'SET_ENTERPRISE_PROFILE', payload: { sanctionedCcLimit: v } });
   const nayakResult = useMemo(
     () => calculateNayakWorkingCapital(annualTurnover, currentCcLimit),
     [annualTurnover, currentCcLimit]
@@ -289,13 +305,31 @@ export const View02RunwayLab: React.FC = () => {
   const receivableDays = promisedDay;
   const operatingCycleDays = inventoryDays + receivableDays - payableDays;
 
-  // Dynamic Discounting Engine State
-  const [buyerName, setBuyerName] = useState<string>(input.clientName || 'Tata Motors Ltd (Tier-1 OEM)');
+  // Dynamic Discounting Engine State (synced with active deal / ledger / OD rate)
+  const [buyerName, setBuyerName] = useState<string>(
+    input.clientName || state.ledger[0]?.clientName || ''
+  );
   const [discountInvoiceAmount, setDiscountInvoiceAmount] = useState<number>(
-    result ? input.invoiceAmount : (input.invoiceAmount || 280000)
+    expectedReceivables
   );
   const [discountDueDay, setDiscountDueDay] = useState<number>(activeInflowDay || 35);
-  const [bankOdRate, setBankOdRate] = useState<number>(17.5);
+  const [bankOdRate, setBankOdRate] = useState<number>(
+    state.enterpriseProfile.bankOdInterestRate > 0 ? state.enterpriseProfile.bankOdInterestRate : 12.0
+  );
+
+  useEffect(() => {
+    setBuyerName(input.clientName || state.ledger[0]?.clientName || '');
+  }, [input.clientName, state.ledger]);
+
+  useEffect(() => {
+    setDiscountInvoiceAmount(expectedReceivables);
+  }, [expectedReceivables]);
+
+  useEffect(() => {
+    setBankOdRate(
+      state.enterpriseProfile.bankOdInterestRate > 0 ? state.enterpriseProfile.bankOdInterestRate : 12.0
+    );
+  }, [state.enterpriseProfile.bankOdInterestRate]);
   const [settlementWindowDays, setSettlementWindowDays] = useState<number>(5);
   const [overlayDiscountTrajectory, setOverlayDiscountTrajectory] = useState<boolean>(true);
   const [copiedMemo, setCopiedMemo] = useState<boolean>(false);
@@ -312,6 +346,22 @@ export const View02RunwayLab: React.FC = () => {
   const activeShortfall = overrideShortfall !== null ? overrideShortfall : calculatedShortfall;
 
   const discountSolverResult: DynamicDiscountingResponse = useMemo(() => {
+    if (!discountInvoiceAmount || discountInvoiceAmount <= 0) {
+      return {
+        optimal_discount_pct: 0,
+        optimal_discount_cost: 0,
+        immediate_cash_inflow: 0,
+        bank_od_carrying_cost: 0,
+        net_benefit_vs_bank_od: 0,
+        annualized_discount_apr: 0,
+        bank_od_apr: bankOdRate,
+        days_accelerated: 0,
+        collision_averted: false,
+        settlement_memo: 'Enter or load an invoice receivable to generate an early-settlement memo.',
+        comparison_tiers: [],
+        rationale: 'Enter or load an invoice receivable to compute optimal early-settlement terms.',
+      };
+    }
     return solveOptimalDynamicDiscounting({
       invoice_amount: discountInvoiceAmount,
       contracted_due_day: discountDueDay,
@@ -319,7 +369,7 @@ export const View02RunwayLab: React.FC = () => {
       collision_day: minCashDay || 15,
       shortfall_amount: activeShortfall,
       bank_od_rate: bankOdRate,
-      counterparty_name: buyerName,
+      counterparty_name: buyerName || 'Counterparty Buyer',
     });
   }, [
     discountInvoiceAmount,
@@ -697,13 +747,31 @@ export const View02RunwayLab: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-          Cash Flow &amp; Treasury Runway Lab
-        </h1>
-        <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-          60-day working capital forecasting modeling payroll, rent, TDS, and GST remittance against customer collection arrivals.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
+            Cash Flow &amp; Treasury Runway Lab
+          </h1>
+          <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
+            60-day working capital forecasting modeling payroll, rent, TDS, and GST remittance against customer collection arrivals.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'LOAD_DEMO_PRESET', payload: 'all' })}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/25 transition-colors"
+          >
+            Load Demo Preset
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'RESET_WORKSPACE_TO_BLANK', payload: 'ap' })}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Clear AP Bills
+          </button>
+        </div>
       </div>
 
       {/* 3-Pill Segmented Sub-Navigation */}
@@ -1617,6 +1685,21 @@ export const View02RunwayLab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-hairline)] text-xs font-mono">
+              {apRunResult.items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 px-4 text-center text-xs font-sans text-[var(--text-muted)]">
+                    No vendor payables queued yet. Click{' '}
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'LOAD_DEMO_PRESET', payload: 'ap' })}
+                      className="font-semibold text-[var(--accent-primary)] underline underline-offset-2"
+                    >
+                      Load Demo AP Bills
+                    </button>{' '}
+                    to prioritize MSME 43B(h) &amp; Section 16(2) ITC vendor payouts.
+                  </td>
+                </tr>
+              ) : null}
               {apRunResult.items.map((item) => (
                 <tr key={item.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
                   <td className="py-3 px-3 font-sans font-medium text-[var(--text-primary)]">

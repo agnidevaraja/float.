@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWorkspace } from '../../store/workspaceStore';
 import { evaluateInvoicePipeline, loadApiConfig } from '../../services/inferenceBridge';
 import type { WhatIfScenario } from '../../types';
@@ -50,6 +50,10 @@ export const View01DealWorkbench: React.FC = () => {
   const [whatIfLabel, setWhatIfLabel] = useState('');
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setLocal({ ...state.intake });
+  }, [state.intake]);
+
   const update = (patch: Record<string, any>) => {
     setActivePresetId(null);
     setLocal((prev) => ({ ...prev, ...patch }));
@@ -60,24 +64,33 @@ export const View01DealWorkbench: React.FC = () => {
     setLocal({
       ...preset.params,
       clientName: preset.name.replace(/^\d+\.\s*/, ''),
+      currentBankBalance:
+        state.treasuryDefaults.currentBankBalance > 0
+          ? state.treasuryDefaults.currentBankBalance
+          : preset.params.currentBankBalance,
+      monthlyFixedExpenses:
+        state.treasuryDefaults.monthlyFixedExpenses > 0
+          ? state.treasuryDefaults.monthlyFixedExpenses
+          : preset.params.monthlyFixedExpenses,
     });
     setErrors({});
   };
 
   const handleResetToEmpty = () => {
     setActivePresetId(null);
+    dispatch({ type: 'RESET_INTAKE' });
     setLocal({
       invoiceAmount: 0,
-      paymentTermDays: 30,
+      paymentTermDays: state.enterpriseProfile?.standardCreditTermDays || 30,
       customerTenureMonths: 0,
       pastLatePercent: 0,
       orderSizeVsAvg: 1.0,
       pastAvgDelayDays: 0,
       dueWeekday: 'Mon',
       macroStressMultiplier: 1.0,
-      gstRegistered: true,
-      currentBankBalance: 0,
-      monthlyFixedExpenses: 0,
+      gstRegistered: state.treasuryDefaults.gstRegistered,
+      currentBankBalance: state.treasuryDefaults.currentBankBalance,
+      monthlyFixedExpenses: state.treasuryDefaults.monthlyFixedExpenses,
       clientName: '',
       gstin: '',
     });
@@ -156,6 +169,8 @@ export const View01DealWorkbench: React.FC = () => {
             : state.currentResult.blendedRiskPercent > 30
             ? 'PENDING'
             : 'ON_TRACK',
+        dueInDays: local.paymentTermDays,
+        evaluated: true,
         savedAt: new Date(),
       },
     });
@@ -190,6 +205,8 @@ export const View01DealWorkbench: React.FC = () => {
           type === 'COUNTER' ? term + 2 : state.currentResult.expectedArrivalDay,
         status:
           type === 'DECLINE' ? 'OVERDUE' : type === 'APPROVE' ? 'ON_TRACK' : 'PENDING',
+        dueInDays: term,
+        evaluated: true,
         savedAt: new Date(),
       },
     });
@@ -201,7 +218,12 @@ export const View01DealWorkbench: React.FC = () => {
     (l) => activeClientName && l.clientName.toLowerCase() === activeClientName.toLowerCase()
   );
   const existingBalance = existingLedgerInvoices.reduce((acc, curr) => acc + curr.invoiceAmount, 0);
-  const defaultCreditLimit = 1000000; // default ₹10,00,000 credit ceiling
+  const defaultCreditLimit =
+    state.enterpriseProfile?.sanctionedCcLimit > 0
+      ? state.enterpriseProfile.sanctionedCcLimit
+      : state.treasuryDefaults.bankOverdraftLimit > 0
+      ? state.treasuryDefaults.bankOverdraftLimit
+      : 1000000; // fallback ceiling when CC limit not yet configured in Settings
   const projectedExposure = existingBalance + (local.invoiceAmount || 0);
   const creditUtilization = defaultCreditLimit > 0 ? (projectedExposure / defaultCreditLimit) * 100 : 0;
   const isCreditBreached = projectedExposure > defaultCreditLimit;
@@ -221,6 +243,7 @@ export const View01DealWorkbench: React.FC = () => {
         onSaveLedger={handleSaveLedger}
         onDecision={handleDecision}
         onEdit={() => dispatch({ type: 'SET_PHASE', payload: 'intake' })}
+        enterpriseProfile={state.enterpriseProfile}
       />
     );
   }
@@ -242,7 +265,7 @@ export const View01DealWorkbench: React.FC = () => {
         <div className="flex items-center justify-between">
           <span className="text-xs font-sans font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-            Sample Customer Scenarios (374,284 Records • 6 Data Sources • 59 Features)
+            Demo Presets — Click to test a sample customer scenario (374,284 Records • 6 Data Sources • 59 Features)
           </span>
           <button
             type="button"
@@ -653,6 +676,7 @@ function DossierPhase({
   onSaveLedger,
   onDecision,
   onEdit,
+  enterpriseProfile,
 }: any) {
   const [decisionNotice, setDecisionNotice] = useState<string | null>(null);
 
@@ -685,6 +709,9 @@ function DossierPhase({
   // TReDS Factoring Yield Calculation
   const tredsYield = calculateTredsYield(intake.invoiceAmount, intake.paymentTermDays || 45, 8.5, 0.05);
 
+  const odInterestRate = enterpriseProfile?.bankOdInterestRate > 0 ? enterpriseProfile.bankOdInterestRate : 12.0;
+  const defaultMargin = enterpriseProfile?.typicalGrossMarginPercent > 0 ? enterpriseProfile.typicalGrossMarginPercent : 18.0;
+
   const [showCreditMemo, setShowCreditMemo] = useState(false);
   const [discountPct, setDiscountPct] = useState<number>(2.0);
   const [earlyPayDay, setEarlyPayDay] = useState<number>(10);
@@ -695,13 +722,13 @@ function DossierPhase({
         intake.paymentTermDays || 45,
         earlyPayDay,
         discountPct,
-        12.0,
+        odInterestRate,
         8.5
       ),
-    [intake.invoiceAmount, intake.paymentTermDays, earlyPayDay, discountPct]
+    [intake.invoiceAmount, intake.paymentTermDays, earlyPayDay, discountPct, odInterestRate]
   );
 
-  const [nominalMargin, setNominalMargin] = useState<number>(18.0);
+  const [nominalMargin, setNominalMargin] = useState<number>(defaultMargin);
   const delayDays = Math.max(0, result.expectedArrivalDay - (intake.paymentTermDays || 30));
   const erosionResult = useMemo(
     () =>
@@ -709,9 +736,9 @@ function DossierPhase({
         intake.invoiceAmount,
         delayDays,
         nominalMargin,
-        12.0
+        odInterestRate
       ),
-    [intake.invoiceAmount, delayDays, nominalMargin]
+    [intake.invoiceAmount, delayDays, nominalMargin, odInterestRate]
   );
 
   // Underwriting Intelligence Visualization Suite
@@ -1387,7 +1414,7 @@ function DossierPhase({
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-[var(--accent-primary)] uppercase">Option C: Bank OD / CC Draw</span>
               <span className="text-[9px] px-1.5 py-0.2 border border-[var(--accent-primary)]/40 text-[var(--accent-primary)]">
-                12.0% APR
+                {odInterestRate.toFixed(1)}% APR
               </span>
             </div>
             <div className="text-lg font-bold text-[var(--accent-primary)] tabular-nums">

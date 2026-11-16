@@ -161,6 +161,27 @@ export interface LedgerEntry {
   expectedArrivalDay: number;
   status: 'PENDING' | 'OVERDUE' | 'ON_TRACK';
   savedAt: Date;
+  dueInDays?: number;
+  evaluated?: boolean;
+}
+
+export interface GstVendorInvoice {
+  id: string;
+  vendorName: string;
+  gstin: string;
+  invoiceNumber: string;
+  taxableAmount: number;
+  gstAmount: number;
+  status: 'GSTR1_FILED' | 'GSTR1_MISSING' | 'BLOCKED_17_5';
+  actionTaken?: 'HOLD_PAYMENT' | 'RELEASE_PAYMENT';
+}
+
+export interface PlannerInvoiceRecord {
+  client: string;
+  amount: number;
+  terms: number;
+  actualPayDay: number;
+  paidLate: boolean;
 }
 
 export interface ChatMessage {
@@ -261,6 +282,7 @@ export interface CopilotRequest {
   message: string;
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   deal_context?: Record<string, any>;
+  workspace_context?: Record<string, any>;
 }
 
 export interface CopilotResponse {

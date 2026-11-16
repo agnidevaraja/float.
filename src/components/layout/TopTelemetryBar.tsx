@@ -65,11 +65,15 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
         {state.enterpriseProfile && (
           <div
             className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-elevated)]"
-            title={`Company: ${state.enterpriseProfile.companyName}`}
+            title={
+              state.enterpriseProfile.companyName
+                ? `Company: ${state.enterpriseProfile.companyName}`
+                : 'Enterprise Profile not configured — click Settings to configure or load demo'
+            }
           >
             <Building2 className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
             <span className="text-[11px] font-sans font-medium text-[var(--text-primary)] max-w-[150px] truncate">
-              {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName}
+              {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName || 'Your Enterprise'}
             </span>
           </div>
         )}

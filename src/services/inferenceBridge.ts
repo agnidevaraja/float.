@@ -732,38 +732,40 @@ function fallbackPlanSimulation(req: BusinessPlanRequest): BusinessPlanResponse 
 
 function fallbackCopilotResponse(req: CopilotRequest): CopilotResponse {
   const tools: ToolUsageItem[] = [];
+  const msg = req.message.toLowerCase().trim();
+  const isGreeting = /^(hi|hello|hey|hii+|namaste|help|what can you do)[!.,?\s]*$/.test(msg);
 
-  // Inspect message intent and simulate live tool calls
-  const msg = req.message.toLowerCase();
-
-  if (msg.includes('predict') || msg.includes('deal') || msg.includes('risk') || req.deal_context) {
-    tools.push({
-      tool: 'run_deal_prediction',
-      args: {
-        invoice_amount: req.deal_context?.invoiceAmount || 385000,
-        payment_term_days: req.deal_context?.paymentTermDays || 30,
-        counterparty: req.deal_context?.clientName || 'Active Intake Deal',
-      },
-    });
+  const ctx = req.deal_context;
+  if (!isGreeting && (msg.includes('predict') || msg.includes('deal') || msg.includes('risk'))) {
+    if (ctx && Number(ctx.invoiceAmount) > 0) {
+      tools.push({
+        tool: 'run_deal_prediction',
+        args: {
+          invoice_amount: Number(ctx.invoiceAmount),
+          payment_term_days: ctx.paymentTermDays || 45,
+          counterparty: ctx.clientName || 'Active Intake Deal',
+        },
+      });
+    }
   }
 
-  if (msg.includes('macro') || msg.includes('spread') || msg.includes('rate') || msg.includes('rbi')) {
+  if (!isGreeting && (msg.includes('macro') || msg.includes('spread') || msg.includes('rbi'))) {
     tools.push({
       tool: 'live_web_and_macro_search',
       args: { query: 'FRED BAA10Y Corporate Spread & RBI Repo Rate 2026' },
     });
   }
 
-  if (msg.includes('business') || msg.includes('company') || msg.includes('custom') || msg.includes('vendor')) {
-    tools.push({
-      tool: 'lookup_business_database',
-      args: { filter: 'active_counterparty_weights' },
-    });
-  }
+  const activeAmt = req.deal_context?.invoiceAmount || 0;
+  const reply = isGreeting
+    ? 'Hello! I am float. AI Risk & Treasury Copilot running on the embedded local engine.'
+    : activeAmt > 0 && req.deal_context?.blendedRiskPercent !== undefined
+    ? `Calibrated local analysis: Deal INR ${Number(activeAmt).toLocaleString('en-IN')} carries ${Number(req.deal_context.blendedRiskPercent).toFixed(1)}% late risk with expected arrival on Day ${req.deal_context.expectedArrivalDay}.`
+    : 'Embedded treasury engine ready. Enter a deal or ask a specific question about cash runway, ageing ledger, or GST Section 43B(h).';
 
   return {
-    reply: `Based on calibrated underwriting ensemble analysis, your deal shows a ${req.deal_context?.blendedRiskPercent || '42.8'}% default probability with capital arrival expected on Day ${req.deal_context?.expectedArrivalDay || 38}. Statutory 45-day Net payment enforcement under Section 43B(h) is active.`,
+    reply,
     tools_used: tools,
-    model: 'Qwen-2.5-7B-Instruct (Tool-Calling Engine)',
+    model: 'Embedded Calibrated Engine (Browser)',
   };
 }

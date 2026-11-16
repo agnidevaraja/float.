@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Database,
   TrendingUp,
@@ -69,30 +69,137 @@ export const View07BusinessPlanner: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'adapter' | 'planner'>('adapter');
 
   // ---------------------------------------------------------------------------
-  // Panel A State: Custom Business Import
+  // Panel A State: Custom Business Import (blank-first; synced with workspaceStore)
   // ---------------------------------------------------------------------------
   const [companyName, setCompanyName] = useState<string>(
-    () => state.enterpriseProfile?.companyName || 'Apex Precision Engineering Pvt Ltd'
+    () => state.plannerState.companyName || state.enterpriseProfile?.companyName || ''
   );
   const [industryNotes, setIndustryNotes] = useState<string>(
-    () => state.enterpriseProfile?.keyProductsServices || 'CNC precision turned shafts, automotive tooling & defense subcontracting.'
+    () => state.plannerState.industryNotes || state.enterpriseProfile?.keyProductsServices || ''
   );
   const [inputMode, setInputMode] = useState<'table' | 'csv'>('table');
-  const [invoiceRows, setInvoiceRows] = useState<InvoiceRow[]>(() => BENCHMARK_HISTORICAL_INVOICES);
+  const [invoiceRows, setInvoiceRows] = useState<InvoiceRow[]>(() =>
+    state.plannerState.rows.length > 0
+      ? state.plannerState.rows.map((r, idx) => ({
+          id: `PL-${idx + 1}`,
+          counterparty_name: r.client,
+          invoice_amount: r.amount,
+          payment_term_days: r.terms,
+          customer_tenure_months: 18,
+          past_late_percent: r.paidLate ? 40 : 12,
+          order_size_vs_avg: 1.15,
+          past_avg_delay_days: Math.max(0, r.actualPayDay - r.terms),
+          was_late: r.paidLate,
+        }))
+      : []
+  );
   const [isImporting, setIsImporting] = useState<boolean>(false);
   const [importResult, setImportResult] = useState<BusinessDataImportResponse | null>(null);
+
+  // Sync Panel A with workspaceStore changes (Demo Preset / Settings / Reset)
+  useEffect(() => {
+    setCompanyName(state.plannerState.companyName || state.enterpriseProfile?.companyName || '');
+  }, [state.plannerState.companyName, state.enterpriseProfile?.companyName]);
+
+  useEffect(() => {
+    if (state.plannerState.industryNotes || state.enterpriseProfile?.keyProductsServices) {
+      setIndustryNotes(state.plannerState.industryNotes || state.enterpriseProfile?.keyProductsServices || '');
+    } else if (!state.enterpriseProfile?.companyName && state.plannerState.rows.length === 0) {
+      setIndustryNotes('');
+    }
+  }, [state.plannerState.industryNotes, state.enterpriseProfile?.keyProductsServices, state.enterpriseProfile?.companyName, state.plannerState.rows.length]);
+
+  useEffect(() => {
+    if (state.plannerState.rows.length === 0) {
+      setInvoiceRows([]);
+      setImportResult(null);
+    } else {
+      setInvoiceRows(
+        state.plannerState.rows.map((r, idx) => ({
+          id: `PL-${idx + 1}`,
+          counterparty_name: r.client,
+          invoice_amount: r.amount,
+          payment_term_days: r.terms,
+          customer_tenure_months: 18,
+          past_late_percent: r.paidLate ? 40 : 12,
+          order_size_vs_avg: 1.15,
+          past_avg_delay_days: Math.max(0, r.actualPayDay - r.terms),
+          was_late: r.paidLate,
+        }))
+      );
+    }
+  }, [state.plannerState.rows]);
 
   // ---------------------------------------------------------------------------
   // Panel B State: 6-Month Working Capital & Expansion Survival Planner
   // ---------------------------------------------------------------------------
-  const [currentCash, setCurrentCash] = useState<number>(350000);
-  const [monthlyRevenue, setMonthlyRevenue] = useState<number>(650000);
-  const [monthlyExpenses, setMonthlyExpenses] = useState<number>(250000);
-  const [expansionCapEx, setExpansionCapEx] = useState<number>(200000);
-  const [avgReceivableDays, setAvgReceivableDays] = useState<number>(45);
-  const [horizonMonths, setHorizonMonths] = useState<number>(6);
+  const [currentCash, setCurrentCashState] = useState<number>(state.treasuryDefaults.currentBankBalance);
+  const [monthlyRevenue, setMonthlyRevenueState] = useState<number>(
+    state.plannerState.monthlyRevenue ||
+      (state.enterpriseProfile.annualTurnover > 0 ? Math.round(state.enterpriseProfile.annualTurnover / 12) : 0)
+  );
+  const [monthlyExpenses, setMonthlyExpensesState] = useState<number>(
+    state.treasuryDefaults.monthlyFixedExpenses
+  );
+  const [expansionCapEx, setExpansionCapExState] = useState<number>(state.plannerState.expansionCapEx);
+  const [avgReceivableDays, setAvgReceivableDaysState] = useState<number>(
+    state.plannerState.avgReceivableDays || state.enterpriseProfile.standardCreditTermDays || 45
+  );
+  const [horizonMonths, setHorizonMonths] = useState<number>(state.plannerState.horizonMonths || 6);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [planResult, setPlanResult] = useState<BusinessPlanResponse | null>(null);
+
+  useEffect(() => {
+    setCurrentCashState(state.treasuryDefaults.currentBankBalance);
+  }, [state.treasuryDefaults.currentBankBalance]);
+
+  useEffect(() => {
+    setMonthlyExpensesState(state.treasuryDefaults.monthlyFixedExpenses);
+  }, [state.treasuryDefaults.monthlyFixedExpenses]);
+
+  useEffect(() => {
+    setMonthlyRevenueState(
+      state.plannerState.monthlyRevenue ||
+        (state.enterpriseProfile.annualTurnover > 0 ? Math.round(state.enterpriseProfile.annualTurnover / 12) : 0)
+    );
+  }, [state.plannerState.monthlyRevenue, state.enterpriseProfile.annualTurnover]);
+
+  useEffect(() => {
+    setExpansionCapExState(state.plannerState.expansionCapEx);
+  }, [state.plannerState.expansionCapEx]);
+
+  useEffect(() => {
+    setAvgReceivableDaysState(
+      state.plannerState.avgReceivableDays || state.enterpriseProfile.standardCreditTermDays || 45
+    );
+  }, [state.plannerState.avgReceivableDays, state.enterpriseProfile.standardCreditTermDays]);
+
+  const setCurrentCash = (v: number) => {
+    setCurrentCashState(v);
+    dispatch({
+      type: 'SET_DEFAULTS',
+      payload: { ...state.treasuryDefaults, currentBankBalance: v },
+    });
+  };
+  const setMonthlyExpenses = (v: number) => {
+    setMonthlyExpensesState(v);
+    dispatch({
+      type: 'SET_DEFAULTS',
+      payload: { ...state.treasuryDefaults, monthlyFixedExpenses: v },
+    });
+  };
+  const setMonthlyRevenue = (v: number) => {
+    setMonthlyRevenueState(v);
+    dispatch({ type: 'SET_PLANNER_STATE', payload: { monthlyRevenue: v } });
+  };
+  const setExpansionCapEx = (v: number) => {
+    setExpansionCapExState(v);
+    dispatch({ type: 'SET_PLANNER_STATE', payload: { expansionCapEx: v } });
+  };
+  const setAvgReceivableDays = (v: number) => {
+    setAvgReceivableDaysState(v);
+    dispatch({ type: 'SET_PLANNER_STATE', payload: { avgReceivableDays: v } });
+  };
 
   // Add Row
   const handleAddRow = () => {
@@ -371,7 +478,25 @@ export const View07BusinessPlanner: React.FC = () => {
             Fine-tune custom ensemble counterparty weights from historical invoices and simulate 6-month expansion runway across 6 Data Sources &amp; 59 Features.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'LOAD_DEMO_PRESET', payload: 'planner' })}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/25 transition-colors"
+          >
+            Load Demo Preset
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: 'RESET_WORKSPACE_TO_BLANK', payload: 'planner' });
+              setPlanResult(null);
+              setImportResult(null);
+            }}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Clear to Blank
+          </button>
           {state.customBusinessActive && (
             <span className="text-[10px] font-sans font-semibold text-[var(--accent-safe)] border border-[var(--accent-safe)]/40 rounded-full px-3 py-1 bg-[var(--bg-elevated)] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-safe)]" />
@@ -478,7 +603,7 @@ export const View07BusinessPlanner: React.FC = () => {
                     className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
                   >
                     <RefreshCw className="w-2.5 h-2.5" />
-                    <span>Reset Preset</span>
+                    <span>Load Demo Sample</span>
                   </button>
                   <button
                     type="button"
@@ -505,6 +630,13 @@ export const View07BusinessPlanner: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-hairline)]">
+                    {invoiceRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 px-3 text-center text-xs font-sans text-[var(--text-muted)]">
+                          No historical invoice records added yet. Click <span className="font-semibold text-[var(--accent-primary)]">Load Demo Preset</span> or <span className="font-semibold text-[var(--text-primary)]">+ Add Row</span> to train a custom counterparty adapter.
+                        </td>
+                      </tr>
+                    ) : null}
                     {invoiceRows.map((r) => (
                       <tr key={r.id} className="hover:bg-[var(--bg-elevated)]/50">
                         <td className="p-1.5">

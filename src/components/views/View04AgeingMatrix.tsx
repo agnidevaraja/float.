@@ -77,7 +77,44 @@ const riskColor = (r: number): string =>
 export const View04AgeingMatrix: React.FC = () => {
   const navigate = useNavigate();
   const { state, dispatch } = useWorkspace();
-  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+
+  // Derive Ageing Matrix rows directly from the single shared workspace ledger
+  const invoices: InvoiceRow[] = useMemo(
+    () =>
+      state.ledger.map((l) => ({
+        id: l.id,
+        client: l.clientName,
+        amount: l.invoiceAmount,
+        term: l.paymentTermDays,
+        dueIn: l.dueInDays ?? (l.status === 'OVERDUE' ? -15 : l.paymentTermDays),
+        risk: l.riskPercent,
+        status: l.status,
+        evaluated: l.evaluated ?? true,
+      })),
+    [state.ledger]
+  );
+
+  const setInvoices = (updater: InvoiceRow[] | ((prev: InvoiceRow[]) => InvoiceRow[])) => {
+    const nextRows = typeof updater === 'function' ? updater(invoices) : updater;
+    const nextLedger = nextRows.map((row) => ({
+      id: row.id,
+      clientName: row.client,
+      invoiceAmount: row.amount,
+      paymentTermDays: row.term,
+      riskPercent: row.risk,
+      expectedArrivalDay:
+        row.dueIn < 0
+          ? row.term + Math.abs(row.dueIn)
+          : Math.round(row.term + (row.risk / 100) * 14),
+      status: row.status,
+      savedAt: new Date(),
+      dueInDays: row.dueIn,
+      evaluated: row.evaluated,
+    }));
+    dispatch({ type: 'SET_LEDGER', payload: nextLedger });
+  };
+
+  const odRatePct = state.enterpriseProfile?.bankOdInterestRate > 0 ? state.enterpriseProfile.bankOdInterestRate : 12;
   const [activeBucketId, setActiveBucketId] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'invoices' | 'customers' | 'concentration' | 'migration'>('invoices');
   const [riskFilter, setRiskFilter] = useState<'all' | 'high_risk' | 'overdue' | 'safe'>('all');
@@ -137,7 +174,7 @@ export const View04AgeingMatrix: React.FC = () => {
 
     const totalOdInterestBleed = overdueInvoices.reduce((acc, curr) => {
       const daysOverdue = Math.abs(curr.dueIn);
-      const interest = Math.round(curr.amount * 0.12 * (daysOverdue / 365));
+      const interest = Math.round(curr.amount * (odRatePct / 100) * (daysOverdue / 365));
       return acc + interest;
     }, 0);
 
@@ -157,7 +194,7 @@ export const View04AgeingMatrix: React.FC = () => {
       ceiPercent,
       overdueCount: overdueInvoices.length,
     };
-  }, [invoices]);
+  }, [invoices, odRatePct]);
 
   // Customer Credit Concentration & Single-Counterparty Risk
   const concentrationMetrics = useMemo(() => {
@@ -634,8 +671,12 @@ export const View04AgeingMatrix: React.FC = () => {
         orderSizeVsAvg: 1.2,
         customerTenureMonths: 14,
         clientName: row.client,
+        currentBankBalance: state.treasuryDefaults.currentBankBalance,
+        monthlyFixedExpenses: state.treasuryDefaults.monthlyFixedExpenses,
+        gstRegistered: state.treasuryDefaults.gstRegistered,
       },
     });
+    dispatch({ type: 'SET_PHASE', payload: 'intake' });
     navigate('/workspace/deal');
   };
 
@@ -873,7 +914,7 @@ export const View04AgeingMatrix: React.FC = () => {
               onClick={() => setInvoices(BENCHMARK_PORTFOLIO)}
               className="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white hover:opacity-90 flex items-center gap-1.5 transition-opacity"
             >
-              <Zap className="w-3.5 h-3.5" /> Load Benchmark Demo Portfolio (10 Invoices)
+              <Zap className="w-3.5 h-3.5" /> Load Demo Preset (10 Invoices)
             </button>
             <button
               type="button"
@@ -949,7 +990,7 @@ export const View04AgeingMatrix: React.FC = () => {
                 -{formatINR(cfoMetrics.totalOdInterestBleed)}
               </span>
               <span className="text-[9px] font-mono text-[var(--text-tertiary)]">
-                Cost of bank OD at 12% p.a.
+                Cost of bank OD at {odRatePct}% p.a.
               </span>
             </div>
 

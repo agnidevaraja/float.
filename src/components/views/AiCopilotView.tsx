@@ -23,7 +23,12 @@ import {
 import { useWorkspace } from '../../store/workspaceStore';
 import { EChartBox } from '../charts/EChartBox';
 import type { EChartsOption } from 'echarts';
-import { calculateMsmeCompoundInterest, calculateSection43bExposure } from '../../engine/statutoryEngine';
+import {
+  buildLiveCopilotWorkspaceContext,
+  extractWorkspaceSnapshot,
+  generateCopilotTurnResponse,
+  simulate60DayRunway,
+} from '../../engine/copilotEngine';
 import { loadApiConfig, askCopilotLive } from '../../services/inferenceBridge';
 import type { ToolUsageItem } from '../../types/engineContract';
 
@@ -59,8 +64,53 @@ const fmt = (v: number) =>
     maximumFractionDigits: 0,
   }).format(v);
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  const formatLine = (line: string, lineIdx: number): React.ReactNode => {
+    const tokens = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+    return (
+      <React.Fragment key={lineIdx}>
+        {tokens.map((token, idx) => {
+          if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
+            return (
+              <strong key={idx} className="font-semibold text-[var(--text-primary)]">
+                {token.slice(2, -2)}
+              </strong>
+            );
+          }
+          if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+            return (
+              <code
+                key={idx}
+                className="px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-hairline)] font-mono text-[11px] text-[var(--text-primary)]"
+              >
+                {token.slice(1, -1)}
+              </code>
+            );
+          }
+          return <React.Fragment key={idx}>{token}</React.Fragment>;
+        })}
+        {lineIdx < lines.length - 1 ? '\n' : null}
+      </React.Fragment>
+    );
+  };
+
+  return lines.map((line, idx) => {
+    const headingMatch = line.match(/^#{1,3}\s+(.+)$/);
+    if (headingMatch) {
+      return (
+        <React.Fragment key={idx}>
+          <span className="font-semibold text-[var(--text-primary)]">{formatLine(headingMatch[1], idx)}</span>
+        </React.Fragment>
+      );
+    }
+    return formatLine(line, idx);
+  });
+}
+
 export const AiCopilotView: React.FC = () => {
   const { state } = useWorkspace();
+  const liveSnap = extractWorkspaceSnapshot(state);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -81,19 +131,25 @@ export const AiCopilotView: React.FC = () => {
     setExpandedThinking((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
   };
 
-  const [messages, setMessages] = useState<Message[]>([
+  const buildWelcomeContent = () => {
+    const snap = extractWorkspaceSnapshot(state);
+    const statusLine = snap.isBlank
+      ? '- **Current Workspace Status:** Blank slate — enter figures in any tab or load a Demo Preset in Settings to inspect live receivables, runway, and GST metrics.'
+      : `- **Live Workspace Loaded:** ${snap.companyName} | Cash Balance: **${fmt(snap.bankBalance)}** | Active Deal: **${snap.activeDealAmount > 0 ? `${snap.activeDealClient} (${fmt(snap.activeDealAmount)})` : 'None'}** | Open Ledger: **${snap.ledgerCount} invoice${snap.ledgerCount === 1 ? '' : 's'} (${fmt(snap.ledgerTotal)})**`;
+
+    return `Hello! I am your **float. AI Risk & Treasury Copilot**, connected directly to your live workspace store.
+
+${statusLine}
+- **Capabilities:** Deal underwriting math, 60-day runway projections, Section 16(2) GST & Section 43B(h) statutory rules, TDS 26AS checks, and 6-Source Ensemble benchmarks (**374,284 Records**, **59 Features**, **ROC-AUC 0.9845**).
+
+Ask a question, test a custom what-if order (e.g. *"Evaluate a ₹4,00,000 Net-60 order"*), attach a CSV/document, or request a chart.`;
+  };
+
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello! I am your float. Copilot, actively monitoring your deal intake, accounts receivable ledger, GST compliance status, and 60-day treasury runway.
-
-I have full context on:
-- Active Deal Dossier & Probability Scores
-- Portfolio Ageing Matrix (10 benchmark invoices aggregating ₹50.2L)
-- Section 16(2) GST & Section 43B(h) Statutory Rules
-- Champion 6-Source Ensemble Benchmarks (6 Data Sources, 374,284 Records, 59 Features, ROC-AUC 0.9845, PR-AUC 0.9896, F1-Score 0.9120)
-
-Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit a counterparty, or draft a statutory notice.`,
+      content: buildWelcomeContent(),
       timestamp: new Date(),
     },
   ]);
@@ -138,8 +194,10 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
     e.target.value = '';
   };
 
-  // Generate In-Chat EChart: Aging Distribution
+  // Generate In-Chat EChart: Live Aging Distribution from state.ledger
   const generateAgingChart = (): EChartsOption => {
+    const snap = extractWorkspaceSnapshot(state);
+    const b = snap.agingBrackets;
     return {
       backgroundColor: 'transparent',
       grid: { left: 95, right: 90, top: 20, bottom: 25, containLabel: true },
@@ -164,11 +222,11 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
           type: 'bar',
           barWidth: 14,
           data: [
-            { value: 1850000, itemStyle: { color: '#10B981', borderRadius: [0, 2, 2, 0] } },
-            { value: 840000, itemStyle: { color: '#3B82F6', borderRadius: [0, 2, 2, 0] } },
-            { value: 920000, itemStyle: { color: '#F59E0B', borderRadius: [0, 2, 2, 0] } },
-            { value: 1250000, itemStyle: { color: '#F97316', borderRadius: [0, 2, 2, 0] } },
-            { value: 980000, itemStyle: { color: '#EF4444', borderRadius: [0, 2, 2, 0] } },
+            { value: b.current, itemStyle: { color: '#10B981', borderRadius: [0, 2, 2, 0] } },
+            { value: b.overdue1to15, itemStyle: { color: '#3B82F6', borderRadius: [0, 2, 2, 0] } },
+            { value: b.overdue16to30, itemStyle: { color: '#F59E0B', borderRadius: [0, 2, 2, 0] } },
+            { value: b.overdue31to60, itemStyle: { color: '#F97316', borderRadius: [0, 2, 2, 0] } },
+            { value: b.overdue60Plus, itemStyle: { color: '#EF4444', borderRadius: [0, 2, 2, 0] } },
           ],
           label: {
             show: true,
@@ -185,16 +243,23 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
     };
   };
 
-  // Generate In-Chat EChart: 60-Day Runway Trajectory
+  // Generate In-Chat EChart: Live 60-Day Runway Trajectory
   const generateRunwayChart = (): EChartsOption => {
-    const points = [350000, 320000, 248000, 220000, 180000, 145000, 425000, 390000, 330000, 290000];
-    const days = ['D0', 'D7 (TDS)', 'D14', 'D20 (GST)', 'D28', 'D35', 'D38 (+Inflow)', 'D45', 'D52', 'D60'];
+    const snap = extractWorkspaceSnapshot(state);
+    const receivablePool = snap.hasActiveDeal ? snap.activeDealAmount : snap.ledgerTotal;
+    const inflowDay = state.currentResult?.expectedArrivalDay || snap.activeDealTerms || 35;
+    const runway = simulate60DayRunway(
+      snap.bankBalance,
+      snap.monthlyBurn,
+      receivablePool,
+      inflowDay
+    );
     return {
       backgroundColor: 'transparent',
       grid: { left: 70, right: 40, top: 25, bottom: 25, containLabel: true },
       xAxis: {
         type: 'category',
-        data: days,
+        data: runway.labels,
         axisLabel: { color: '#FAFAFA', fontSize: 9, fontFamily: 'monospace' },
         axisLine: { lineStyle: { color: '#27272A' } },
       },
@@ -211,7 +276,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
       series: [
         {
           type: 'line',
-          data: points,
+          data: runway.series,
           smooth: false,
           showSymbol: true,
           symbolSize: 6,
@@ -262,8 +327,10 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
     };
   };
 
-  // Generate In-Chat EChart: Early Payment Cash Discount APR vs TReDS vs Bank OD
+  // Generate In-Chat EChart: Early Payment Cash Discount APR vs TReDS vs Live Bank OD
   const generateDiscountComparisonChart = (): EChartsOption => {
+    const snap = extractWorkspaceSnapshot(state);
+    const odRate = Number(snap.odRate.toFixed(1));
     return {
       backgroundColor: 'transparent',
       grid: { left: 130, right: 60, top: 20, bottom: 25, containLabel: true },
@@ -279,7 +346,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
       },
       yAxis: {
         type: 'category',
-        data: ['TReDS Factoring', 'Bank OD / CC', '2.0% Cash Discount'],
+        data: ['TReDS Factoring', 'Your Bank OD / CC', '2.0% Cash Discount'],
         axisLabel: { color: '#FAFAFA', fontSize: 10, fontFamily: 'monospace', fontWeight: 'bold' },
         axisTick: { show: false },
         axisLine: { lineStyle: { color: '#27272A' } },
@@ -290,7 +357,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
           barWidth: 16,
           data: [
             { value: 8.5, itemStyle: { color: '#10B981', borderRadius: [0, 2, 2, 0] } },
-            { value: 12.0, itemStyle: { color: '#3B82F6', borderRadius: [0, 2, 2, 0] } },
+            { value: odRate, itemStyle: { color: '#3B82F6', borderRadius: [0, 2, 2, 0] } },
             { value: 21.3, itemStyle: { color: '#EF4444', borderRadius: [0, 2, 2, 0] } },
           ],
           label: {
@@ -308,226 +375,22 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
     };
   };
 
-  // Context-Aware Response Engine
-  const processQuery = (
-    query: string
-  ): {
-    content: string;
-    thinkingTrace?: string[];
-    chartOption?: EChartsOption;
-    chartTitle?: string;
-    actionSnippet?: { label: string; text: string };
-  } => {
-    const q = query.toLowerCase();
-    const deal = state.intake;
-    const dealResult = state.currentResult;
-    const ep = state.enterpriseProfile;
-
-    const thinkingSteps = [
-      `1. Parsed query intent and verified active context against workspace state.`,
-      `2. Ingested Enterprise Identity: ${ep.companyName} (${ep.udyamRegistrationNumber}) • MSME ${ep.msmeCategory}.`,
-      `3. Checked statutory parameters: MSMED Act Sec 16 (20.25% compound interest) & Income Tax Sec 43B(h).`,
-      `4. Cross-referenced 60-day treasury model (Bank Reserve: ₹3,50,000; Monthly Fixed Burn: ₹1,60,000).`,
-      `5. Formatted response according to selected depth mode: ${replyDepth.toUpperCase()}.`,
-    ];
-
-    // ENTERPRISE BUSINESS PROFILE & TREASURY IDENTITY AUDIT
-    if (
-      q.includes('profile') ||
-      q.includes('company') ||
-      q.includes('enterprise') ||
-      q.includes('business') ||
-      q.includes('udyam') ||
-      q.includes('turnover') ||
-      q.includes('cc limit') ||
-      q.includes('who are we') ||
-      q.includes('our details')
-    ) {
-      thinkingSteps.push(`6. Evaluated statutory MSME Standing (${ep.msmeCategory}) & RBI Nayak CC entitlement.`);
-
-      const nayakEntitlement = ep.annualTurnover * 0.20;
-      const ccDeficit = nayakEntitlement - ep.sanctionedCcLimit;
-      const dailyOdDrag = Math.round((1000000 * (ep.bankOdInterestRate / 100)) / 365);
-
-      return {
-        content: `### Enterprise Profile & Treasury Standing Audit:
-
-- **Legal Entity:** **${ep.companyName}** (Brand: *${ep.tradingBrandName}*)
-- **Constitution:** ${ep.constitution.replace('_', ' ')} • **MSME Category:** **${ep.msmeCategory}**
-- **Statutory IDs:** Udyam: \`${ep.udyamRegistrationNumber}\` | GSTIN: \`${ep.gstin}\` | PAN: \`${ep.pan}\`
-- **Location & Sector:** ${ep.operatingLocation} • *${ep.industrySector}*
-- **Annual Turnover:** **${fmt(ep.annualTurnover)}** (₹${(ep.annualTurnover / 10000000).toFixed(2)} Cr)
-
----
-
-### Working Capital & Banking Facilities:
-- **Primary Bank:** ${ep.primaryBank}
-- **Sanctioned CC / Overdraft Limit:** **${fmt(ep.sanctionedCcLimit)}** @ **${ep.bankOdInterestRate}% p.a.**
-- **RBI Nayak Committee Benchmark:** Based on ${fmt(ep.annualTurnover)} turnover, your statutory working capital requirement is **25% (${fmt(ep.annualTurnover * 0.25)})**, entitling you to a minimum bank credit limit of **20% (${fmt(nayakEntitlement)})**.
-  ${ccDeficit > 0 ? `*Opportunity:* You are currently under-leveraged by **${fmt(ccDeficit)}** against RBI guidelines. You can request a limit enhancement with ${ep.primaryBank}.` : `*Status:* Sanctioned CC limit meets or exceeds standard Nayak guidelines.`}
-
----
-
-### Statutory Leverage Under Indian Law:
-1. **Section 43B(h) Leverage:** As a registered **${ep.msmeCategory}** enterprise under Udyam, your corporate buyers are legally mandated to clear dues within **45 days**. Non-compliance triggers **31.2% tax deduction disallowance** in their March 31 audit.
-2. **MSMED Act Section 16 Interest:** Delinquent buyers owe compound interest with monthly rests at 3x RBI Bank Rate (**20.25% p.a.**).
-3. **Delay Drag:** At your current **${ep.bankOdInterestRate}%** OD rate, every ₹10 Lakhs of overdue receivables delayed by 30 days incurs **₹${dailyOdDrag * 30}** in bank interest bleed, eroding ~**${((ep.bankOdInterestRate / 12) / ep.typicalGrossMarginPercent * 100).toFixed(1)}%** of your **${ep.typicalGrossMarginPercent}%** gross profit margin.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-      };
-    }
-
-    // ATTACHED FILE QUERY
-    if (attachedFile) {
-      thinkingSteps.push(
-        `5. Inspected attached document: ${attachedFile.name} (${attachedFile.rowCount || 'text'} records).`
-      );
-
-      const chart = generateAttachedFileChart(attachedFile);
-      const sumFmt = attachedFile.totalSum ? fmt(attachedFile.totalSum) : 'multiple transactions';
-
-      if (replyDepth === 'cfo_brief') {
-        return {
-          content: `**Executive Summary on Uploaded File (${attachedFile.name}):**\n- **Total Exposure Ingested:** ${sumFmt} across ${attachedFile.rowCount || 'detected'} line items.\n- **Statutory Risk Status:** 60% within terms; 25% requires Section 43B(h) Net-45 notification; 15% at critical default risk.\n- **Immediate Treasury Recommendation:** Hold payment on non-filing vendors to preserve liquidity.`,
-          thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-          chartOption: chart,
-          chartTitle: `Ingested File Risk Distribution (${attachedFile.name})`,
-        };
-      }
-
-      return {
-        content: `**Ingested Audit Report for \`${attachedFile.name}\`:**\n\nI have parsed the uploaded document containing **${sumFmt}** in transactional volume across **${attachedFile.rowCount || 'multiple'} entries**.\n\n### Key Findings:\n1. **Statutory 43B(h) Vulnerability:** Invoices approaching 45 days must be flagged to buyers to prevent disallowance of their corporate tax deductions.\n2. **GST Section 16(2) Clawback:** Any supplier invoices past 120 days must be paid before Day 180 to avoid mandatory Table 4(B)(2) reversal and 18% penal interest.\n3. **Recommended Immediate Action:** Issue formal pre-litigation reminders with accrued Section 16 interest (3x RBI Bank Rate).`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-        chartOption: chart,
-        chartTitle: `Visual Breakdown: Ingested File (${attachedFile.name})`,
-      };
-    }
-
-    // GRAPHING / VISUALIZATION QUERIES
-    if (q.includes('graph') || q.includes('chart') || q.includes('visualize') || q.includes('plot')) {
-      if (q.includes('runway') || q.includes('cash') || q.includes('buffer') || q.includes('treasury')) {
-        return {
-          content: `Here is your **60-Day Treasury Cash Trajectory Chart**. Notice the cash trough occurring around Day 20 following GSTR-3B tax payment, followed by recovery when expected customer receivables settle on Day 38.`,
-          thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-          chartOption: generateRunwayChart(),
-          chartTitle: 'Live 60-Day Treasury Cash Buffer Projection',
-        };
-      }
-
-      return {
-        content: `Here is your **Receivables Ageing Capital Distribution Chart** across the 5 standard corporate brackets. The largest concentration of capital is currently in the Current (₹18.5L) and 31-60d (₹12.5L) buckets.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-        chartOption: generateAgingChart(),
-        chartTitle: 'Portfolio Ageing Capital Distribution',
-      };
-    }
-
-    // EARLY PAYMENT CASH DISCOUNT APR & TREDS COMPARISON
-    if (q.includes('discount') || q.includes('apr') || q.includes('treds') || q.includes('cash discount')) {
-      thinkingSteps.push('5. Formulated annualized APR: [2% / 98%] * [365 / 35d] = 21.29% APR.');
-      thinkingSteps.push('6. Compared against RBI TReDS 8.5% factoring yield and 12% Bank OD borrowing cost.');
-
-      if (replyDepth === 'cfo_brief') {
-        return {
-          content: `**Early Cash Discount Verdict:**\n- **Buyer Request:** 2.0% cash discount for Day 10 settlement instead of Day 45.\n- **Effective Annualized APR:** **21.3% APR** (Expensive borrowing trap!).\n- **Recommended Action:** **REJECT CASH DISCOUNT**. Factor the invoice on an RBI TReDS exchange (RXIL / M1xchange) at **8.5% APR** instead, preserving **₹30,400 in net treasury cash**.`,
-          thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-          chartOption: generateDiscountComparisonChart(),
-          chartTitle: 'Annualized Cost of Capital Comparison (APR %)',
-        };
-      }
-
-      return {
-        content: `### Early Payment Cash Discount vs TReDS Factoring vs Bank OD:\n\nOffering a corporate buyer a **2.0% cash discount** to receive payment 35 days early (Day 10 vs Day 45) is a dangerous cost trap for small businesses:\n\n1. **True Annualized Cost (APR):**\n   $$\\text{APR} = \\left(\\frac{2\\%}{98\\%}\\right) \\times \\left(\\frac{365}{35}\\right) \\times 100 = \\mathbf{21.29\\%\\text{ APR}}$$\n   You are effectively borrowing working capital from your customer at an exorbitant **21.3% annual interest rate**.\n\n2. **Cheaper Institutional Alternatives:**\n   - **Option A (TReDS Factoring):** RXIL / M1xchange institutional factoring costs only **8.5% p.a.** ($₹19,600$ discount cost) with **100% zero-recourse default absorption**.\n   - **Option B (Bank Overdraft):** Drawing on your sanctioned Cash Credit limit at 12% costs **$₹27,600$**.\n   - **Option C (2% Discount):** Directly surrenders **$₹50,000$** in gross top-line profit.\n\n**Verdict:** Politely reject the 2% discount request and route the approved invoice through TReDS factoring.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-        chartOption: generateDiscountComparisonChart(),
-        chartTitle: 'Comparative Cost of Capital (APR %)',
-      };
-    }
-
-    // CUSTOMER CREDIT CONCENTRATION & HHI RISK
-    if (q.includes('concentration') || q.includes('hhi') || q.includes('single buyer') || q.includes('exposure')) {
-      thinkingSteps.push('5. Evaluated portfolio receivables concentration across counterparties.');
-      thinkingSteps.push('6. Computed Herfindahl-Hirschman Index (HHI) and checked against 20% safe MSME cap.');
-
-      return {
-        content: `### Portfolio Concentration & Single-Counterparty Default Risk:\n\n- **Top Debtor Exposure:** **Tata Motors Fleet Division Ltd** accounts for **₹48,50,000 (34.2% of total receivables)**.\n- **Herfindahl Index (HHI): 2,840 pts** — Classified as **CRITICAL CONCENTRATION** (threshold > 2,500 pts).\n- **Insolvency Contagion Risk:** If this single debtor experiences bankruptcy or delays payment past 90 days, your company's operating cash buffer will be entirely wiped out.\n- **Prescribed Action:**\n  1. Impose a hard credit cap at 20% of your book.\n  2. For new purchase orders exceeding ₹15 Lakhs, mandate **30% advance deposit** or an **Irrevocable Bank Guarantee (BG)**.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-      };
-    }
-
-    // ACCOUNTS PAYABLE (AP) CASH DISPATCH & VENDOR PRIORITIZATION
-    if (q.includes('vendor') || q.includes('pay') || q.includes('prioritize') || q.includes('dispatch') || q.includes('rtgs') || q.includes('bill')) {
-      thinkingSteps.push('5. Evaluated vendor payables against statutory deadlines: GST 180D ITC and Income Tax 43B(h).');
-      thinkingSteps.push('6. Ranked bills into 4 statutory priority tiers based on penalties averted.');
-
-      return {
-        content: `### Accounts Payable (AP) Statutory Cash Dispatch Protocol:\n\nWhen available treasury cash is constrained, allocate payment in strict statutory priority order:\n\n1. **Tier 1 (Critical): GST Section 16(2) 180-Day ITC Deadlines**\n   - Invoices at 140+ days must be cleared first to prevent mandatory GSTR-3B Table 4(B)(2) reversal + 18% penal interest.\n   - *Current priority bill:* **Apex Precision Castings (₹3,45,000, Day 148)** $\\to$ Preserves ₹62,100 in ITC.\n\n2. **Tier 2 (Urgent): Section 43B(h) MSME Supplier Invoices**\n   - Micro/Small registered suppliers must be paid within 45 days. Failure triggers **31.2% tax deduction disallowance**.\n   - *Current priority bill:* **Shree Balaji Polymers (₹1,85,000, Day 38)** $\\to$ Averts ₹57,720 tax penalty.\n\n3. **Tier 3 (High-Yield): Early Payment Cash Discounts**\n   - Suppliers offering 2% 10-day discounts equal 24% APR returns.\n   - *Current priority bill:* **Hindalco Industrial Extrusions (₹4,20,000, Day 7)** $\\to$ Earns ₹8,400 in net cash.\n\n4. **Tier 4 (Deferred): Standard Trade Payables**\n   - General utilities and contract services with no immediate tax penalties can be safely deferred.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-      };
-    }
-
-    // TDS RECONCILIATION & FORM 26AS RECOVERY
-    if (q.includes('tds') || q.includes('26as') || q.includes('16a') || q.includes('traces')) {
-      thinkingSteps.push('5. Reconciled customer TDS deductions under Section 194C, 194Q, and 194J against Form 26AS credits.');
-
-      const sampleNotice = `STATUTORY COMMUNICATION UNDER SECTION 203 OF THE INCOME TAX ACT, 1961\nTo: Head of Taxation, Larsen & Toubro Heavy Civil Infra\nSubject: Non-reflection of TDS of INR 44,000 in Form 26AS for Invoice INV-2026-002.\nPlease revise your Form 26Q return within 7 business days to prevent working capital blockage.`;
-
-      return {
-        content: `### TDS Receivable & Form 26AS Reconciliation Audit:\n\n- **Total TDS Deducted by Buyers:** **₹1,48,950**\n- **Reflected & Credited in Form 26AS:** **₹7,950** (5.3% reconciliation rate)\n- **Uncredited Locked Working Capital:** **₹1,41,000**\n\n**Key Culprits:**\n1. **Larsen & Toubro:** Deducted ₹44,000 (Sec 194C @ 2%) on Invoice INV-2026-002; 74 days overdue for Form 26Q filing.\n2. **Kalyani Tech:** Deducted ₹68,000 (Sec 194J @ 10%) on Invoice INV-2026-008; 105 days overdue.\n\n**Action:** Serve formal legal demand under **Section 203 of the Income Tax Act** requiring immediate filing and Form 16A generation under threat of Section 272A statutory penalty (₹500/day).`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-        actionSnippet: { label: 'Copy Section 203 Demand Excerpt', text: sampleNotice },
-      };
-    }
-
-    // STATUTORY / MSMED INTEREST / 43B(h)
-    if (q.includes('43b') || q.includes('interest') || q.includes('msme') || q.includes('samadhaan')) {
-      const calc = calculateMsmeCompoundInterest(deal.invoiceAmount || 385000, 30, 24);
-      const sec43 = calculateSection43bExposure(deal.invoiceAmount || 385000, 48, true, 31.2);
-
-      const noticeSnippet = `FORMAL NOTICE OF ACCRUED INTEREST & TAX DISALLOWANCE\nUnder Section 16 of the MSMED Act, 2006, interest of ${fmt(
-        calc.accruedPenalInterest
-      )} has accrued at 3x RBI Bank Rate (20.25% p.a.). Furthermore, under Section 43B(h) of the Income Tax Act, non-payment past Net-45 days triggers extra tax liability of ${fmt(
-        sec43.extraTaxPayableByBuyer
-      )} on your company.`;
-
-      if (replyDepth === 'cfo_brief') {
-        return {
-          content: `**Statutory Recovery Brief:**\n- **Compound Interest Accrued:** ${fmt(calc.accruedPenalInterest)} (at 20.25% p.a. under MSMED Sec 16).\n- **Buyer Tax Disallowance Impact:** ${fmt(sec43.extraTaxPayableByBuyer)} extra tax payable on March 31st.\n- **Action:** Issue formal notice referencing Form 3CD Clause 22 audit disclosure.`,
-          thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-          actionSnippet: { label: 'Statutory Notice Excerpt', text: noticeSnippet },
-        };
-      }
-
-      return {
-        content: `### Statutory Debt Recovery & Tax Leverage Analysis:\n\nUnder Indian law, delayed payments to MSMEs carry severe financial consequences for delinquent corporate buyers:\n\n1. **Section 16 MSMED Act, 2006 (Compound Interest):**\n   - Mandates compound interest with monthly rests at **three times the RBI Bank Rate** ($6.75\\% \\times 3 = 20.25\\%$ p.a.).\n   - Current Accrued Interest on active deal: **${fmt(calc.accruedPenalInterest)}**.\n   - **Section 23 Non-Deductibility:** The buyer *cannot* claim this interest as a business tax expense.\n\n2. **Section 43B(h) Income Tax Act, 1961 (Disallowance):**\n   - If payment is delayed past 45 days, the buyer **loses their expense deduction** in the fiscal year.\n   - Delinquent Buyer Tax Penalty: **+${fmt(sec43.extraTaxPayableByBuyer)}** in extra corporate income tax.\n   - Their statutory auditor must report this default under **Clause 22 of Form 3CD**.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-        actionSnippet: { label: 'Copy Form 3CD Clause 22 Notice', text: noticeSnippet },
-      };
-    }
-
-    // MODEL BENCHMARKS & HONESTY
-    if (q.includes('benchmark') || q.includes('model') || q.includes('accuracy') || q.includes('roc') || q.includes('dataset')) {
-      return {
-        content: `### float. Model Performance & Training Provenance:\n\n- **Dataset Volume:** Trained on **374,284 Records** across **6 Data Sources** (Kaggle B2B AR, Corporate Bankruptcy, UCI Credit Default, FRED Macro Spreads, World Bank Private Credit, and OpenML Rare Fraud) with **59 Features**.\n- **Champion Architecture:** LightGBM Gradient Boosted Decision Trees (GBDT) Ensemble with 6-source feature weighting.\n- **Classification Benchmarks:**\n  - **ROC-AUC: 0.9845**\n  - **PR-AUC: 0.9896** (calibrated for extreme class imbalance where severe defaults are <15% of records)\n  - **F1-Score: 0.9120**\n- **Small Business Fairness Audit:** Verified **False Positive Rate of only 2.4%** on entities with less than 6 months operating history, ensuring startups are never unfairly blacklisted.`,
-        thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-      };
-    }
-
-    // GENERAL WORKSPACE / CASH FLOW / DEFAULT
-    const pRisk = dealResult ? dealResult.blendedRiskPercent.toFixed(1) : '78.4';
-    const arrivalD = dealResult ? dealResult.expectedArrivalDay : 38;
-
-    return {
-      content: `### Executive Financial Assessment:\n\n- **Active Deal Risk:** Evaluated at **${pRisk}% late payment probability** with expected arrival on **Day ${arrivalD}**.\n- **Treasury Runway:** Bank balance of **₹3,50,000** provides an estimated **60-day operating buffer**, with scheduled outflows for Payroll on the 1st, Rent on the 5th, and GST on the 20th.\n- **Statutory Protection:** Net-45 deadline kicks in on Day 45 under Section 43B(h). Delinquent buyers face **31.2% corporate tax penalties** and **20.25% compound interest** under MSMED Act Section 16.\n\nYou can ask me to: **"Graph our cash buffer"**, **"Audit my attached file"**, or **"Draft a counter-offer proposal"**.`,
-      thinkingTrace: thinkingMode ? thinkingSteps : undefined,
-      chartOption: generateRunwayChart(),
-      chartTitle: 'Projected Cash Reserve (Next 60 Days)',
-    };
+  const resolveChartFromKind = (
+    kind: 'aging' | 'runway' | 'discount' | 'file' | undefined,
+    fileSnapshot: AttachedFile | null
+  ): EChartsOption | undefined => {
+    if (kind === 'aging') return generateAgingChart();
+    if (kind === 'runway') return generateRunwayChart();
+    if (kind === 'discount') return generateDiscountComparisonChart();
+    if (kind === 'file' && fileSnapshot) return generateAttachedFileChart(fileSnapshot);
+    return undefined;
   };
 
   const handleSend = async () => {
     if (!inputValue.trim() && !attachedFile) return;
 
-    const userText = inputValue || `Analyzed attached file: ${attachedFile?.name}`;
+    const currentAttachment = attachedFile;
+    const userText = inputValue.trim() || `Analyzed attached file: ${currentAttachment?.name}`;
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -537,51 +400,89 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
 
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
+    setAttachedFile(null);
     setIsTyping(true);
 
-    const localResp = processQuery(userText);
-    const apiCfg = loadApiConfig();
+    const localResp = generateCopilotTurnResponse({
+      query: userText,
+      state,
+      replyDepth,
+      attachment: currentAttachment
+        ? {
+            name: currentAttachment.name,
+            sizeKb: Number((currentAttachment.size / 1024).toFixed(1)),
+            rowCount: currentAttachment.rowCount,
+            totalSum: currentAttachment.totalSum,
+            textSnippet: currentAttachment.textSnippet,
+          }
+        : null,
+    });
 
-    let toolsUsed: ToolUsageItem[] | undefined = undefined;
+    const apiCfg = loadApiConfig();
+    const hasRemoteColab = Boolean(apiCfg.endpointUrl && apiCfg.endpointUrl.trim().length > 0);
+
+    let toolsUsed: ToolUsageItem[] | undefined =
+      localResp.toolsUsed.length > 0 ? localResp.toolsUsed : undefined;
     let modelName: string | undefined = undefined;
     let finalContent = localResp.content;
+    const thinkingTrace = thinkingMode ? localResp.thinkingTrace : undefined;
 
-    try {
-      const history = messages.slice(-5).map((m) => ({ role: m.role, content: m.content }));
-      const dealContext = {
-        invoiceAmount: state.intake.invoiceAmount,
-        paymentTermDays: state.intake.paymentTermDays,
-        clientName: state.intake.clientName,
-        blendedRiskPercent: state.currentResult?.blendedRiskPercent,
-        expectedArrivalDay: state.currentResult?.expectedArrivalDay,
-        customBusinessActive: state.customBusinessActive,
-        companyName: state.customBusinessProfile?.companyName || state.enterpriseProfile.companyName,
-      };
+    if (hasRemoteColab) {
+      try {
+        const history = messages.slice(-5).map((m) => ({ role: m.role, content: m.content }));
+        const snap = extractWorkspaceSnapshot(state);
+        const dealContext =
+          snap.activeDealAmount > 0 || state.currentResult
+            ? {
+                invoiceAmount: snap.activeDealAmount,
+                paymentTermDays: snap.activeDealTerms,
+                clientName: snap.activeDealClient,
+                blendedRiskPercent: state.currentResult?.blendedRiskPercent,
+                expectedArrivalDay: state.currentResult?.expectedArrivalDay,
+                customBusinessActive: state.customBusinessActive,
+                companyName: snap.companyName,
+              }
+            : undefined;
 
-      const colabRes = await askCopilotLive(
-        { message: userText, history, deal_context: dealContext },
-        apiCfg
-      );
+        const colabRes = await askCopilotLive(
+          {
+            message: userText,
+            history,
+            deal_context: dealContext,
+            workspace_context: buildLiveCopilotWorkspaceContext(state, replyDepth),
+          },
+          apiCfg
+        );
 
-      if (colabRes && colabRes.tools_used && colabRes.tools_used.length > 0) {
-        toolsUsed = colabRes.tools_used;
-        modelName = colabRes.model;
-        if (colabRes.reply && colabRes.reply.length > 20) {
+        const isRemoteReply =
+          colabRes &&
+          colabRes.reply &&
+          colabRes.reply.length > 20 &&
+          !colabRes.model?.toLowerCase().includes('browser fallback');
+
+        if (isRemoteReply) {
           finalContent = colabRes.reply;
+          modelName = colabRes.model;
+          toolsUsed =
+            colabRes.tools_used && colabRes.tools_used.length > 0
+              ? colabRes.tools_used
+              : undefined;
         }
+      } catch (err) {
+        console.warn('Live copilot call fallback:', err);
       }
-    } catch (err) {
-      console.warn('Live copilot call fallback:', err);
     }
+
+    const chartOption = resolveChartFromKind(localResp.chartKind, currentAttachment);
 
     const assistantMsg: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
       content: finalContent,
       timestamp: new Date(),
-      thinkingTrace: localResp.thinkingTrace,
-      thinkingDuration: '1.2s',
-      chartOption: localResp.chartOption,
+      thinkingTrace,
+      thinkingDuration: '0.4s',
+      chartOption,
       chartTitle: localResp.chartTitle,
       actionSnippet: localResp.actionSnippet,
       toolsUsed,
@@ -651,11 +552,27 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
       {/* Active Context Summary */}
       <div className="px-3.5 py-2 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] flex items-center justify-between gap-2 overflow-x-auto text-[11px] font-sans text-[var(--text-muted)] whitespace-nowrap">
         <div>
-          <span className="font-semibold text-[var(--text-primary)]">Active Deal:</span>{' '}
-          {state.intake.clientName || 'Apex Industrial'} (₹{((state.intake.invoiceAmount || 140000) / 1000).toFixed(0)}k)
-          {state.customBusinessActive && state.customBusinessProfile
-            ? ` • Custom Adapter: ${state.customBusinessProfile.companyName} (${state.customBusinessProfile.recordsCount} invoices)`
-            : ' • Ageing Book: 10 invoices (₹50.2L)'}
+          {liveSnap.isBlank ? (
+            <>
+              <span className="font-semibold text-[var(--text-primary)]">Workspace:</span>{' '}
+              Blank Workspace (No active deal or invoices loaded)
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-[var(--text-primary)]">Active Deal:</span>{' '}
+              {liveSnap.activeDealAmount > 0
+                ? `${liveSnap.activeDealClient} (${fmt(liveSnap.activeDealAmount)})`
+                : 'None'}
+              {' • '}
+              <span className="font-semibold text-[var(--text-primary)]">Ageing Book:</span>{' '}
+              {liveSnap.ledgerCount > 0
+                ? `${liveSnap.ledgerCount} invoice${liveSnap.ledgerCount === 1 ? '' : 's'} (${fmt(liveSnap.ledgerTotal)})`
+                : '0 invoices (₹0)'}
+              {state.customBusinessActive && state.customBusinessProfile
+                ? ` • Custom Adapter: ${state.customBusinessProfile.companyName} (${state.customBusinessProfile.recordsCount} invoices)`
+                : ''}
+            </>
+          )}
         </div>
         <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
           6 Sources • 374,284 Recs • 59 Feat • AUC 0.9845 • PR 0.9896 • F1 0.9120
@@ -737,7 +654,7 @@ Attach any CSV, PDF, or GST document, or ask me to graph your cash buffer, audit
                       : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--text-primary)]'
                   }`}
                 >
-                  {msg.content}
+                  {isUser ? msg.content : renderInlineMarkdown(msg.content)}
                 </div>
 
                 {/* In-Chat Live EChart (if response contains chart) */}

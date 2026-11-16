@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useWorkspace } from '../../store/workspaceStore';
 import {
   ShieldCheck,
@@ -29,7 +29,7 @@ import type { TdsReceivableItem } from '../../types/statutory';
 import { EChartBox } from '../charts/EChartBox';
 import type { EChartsOption } from 'echarts';
 
-const INITIAL_TDS_ITEMS: TdsReceivableItem[] = [
+export const INITIAL_TDS_ITEMS: TdsReceivableItem[] = [
   {
     id: 'TDS-01',
     clientName: 'Tata Motors Fleet Division Ltd',
@@ -110,55 +110,7 @@ interface VendorInvoice {
   actionTaken?: 'HOLD_PAYMENT' | 'RELEASE_PAYMENT';
 }
 
-const INITIAL_VENDOR_INVOICES: VendorInvoice[] = [
-  {
-    id: 'V-01',
-    vendorName: 'Kaveri Industrial Supplies Ltd',
-    gstin: '27AABCK1298R1ZM',
-    invoiceNumber: 'INV/25-26/0412',
-    taxableAmount: 450000,
-    gstAmount: 81000,
-    status: 'GSTR1_FILED',
-  },
-  {
-    id: 'V-02',
-    vendorName: 'Apex Cloud Hosting & DevOps LLP',
-    gstin: '07AACCA9912Q1ZL',
-    invoiceNumber: 'ACH/MAR/881',
-    taxableAmount: 180000,
-    gstAmount: 32400,
-    status: 'GSTR1_MISSING',
-    actionTaken: 'HOLD_PAYMENT',
-  },
-  {
-    id: 'V-03',
-    vendorName: 'Royal Executive Travel & Hospitality',
-    gstin: '29AABCR4419P1Z8',
-    invoiceNumber: 'RETH-40192',
-    taxableAmount: 85000,
-    gstAmount: 15300,
-    status: 'BLOCKED_17_5',
-  },
-  {
-    id: 'V-04',
-    vendorName: 'Tata Steel Processing Center',
-    gstin: '24AAACT2727Q1ZW',
-    invoiceNumber: 'TSPC/W/19024',
-    taxableAmount: 920000,
-    gstAmount: 165600,
-    status: 'GSTR1_FILED',
-  },
-  {
-    id: 'V-05',
-    vendorName: 'Shree Logistics & Transport Hub',
-    gstin: '27AAACS1818B1ZT',
-    invoiceNumber: 'SLTH-8821',
-    taxableAmount: 140000,
-    gstAmount: 25200,
-    status: 'GSTR1_MISSING',
-    actionTaken: 'HOLD_PAYMENT',
-  },
-];
+// Vendor invoices and TDS items live in workspaceStore.gstState (blank-first; demo loaded via LOAD_DEMO_PRESET)
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -168,19 +120,52 @@ const fmt = (v: number) =>
   }).format(v);
 
 export const View03GstShield: React.FC = () => {
-  const { state } = useWorkspace();
+  const { state, dispatch } = useWorkspace();
   const [activeTab, setActiveTab] = useState<'reconciliation' | 'gst16' | 'sec43b' | 'tds26as'>('reconciliation');
 
-  // Tab 1: GSTR-2B Vendor Reconciliation State
-  const [vendorInvoices, setVendorInvoices] = useState<VendorInvoice[]>(INITIAL_VENDOR_INVOICES);
-  const [monthlyOutputGst, setMonthlyOutputGst] = useState<number>(380000); // GST collected on our sales
+  // Tab 1: GSTR-2B Vendor Reconciliation State (synced with global workspaceStore)
+  const vendorInvoices = state.gstState.vendorInvoices as VendorInvoice[];
+  const setVendorInvoices = (
+    updater: VendorInvoice[] | ((prev: VendorInvoice[]) => VendorInvoice[])
+  ) => {
+    const next = typeof updater === 'function' ? updater(vendorInvoices) : updater;
+    dispatch({ type: 'SET_GST_STATE', payload: { vendorInvoices: next } });
+  };
+  const monthlyOutputGst = state.gstState.monthlyOutputGst;
+  const setMonthlyOutputGst = (v: number) => {
+    dispatch({ type: 'SET_GST_STATE', payload: { monthlyOutputGst: v } });
+  };
 
   // Tab 2: GST Section 16(2) State
-  const [customInvoiceAmount, setCustomInvoiceAmount] = useState<number | ''>(
-    state.intake.invoiceAmount || 140000
+  const [customInvoiceAmount, setCustomInvoiceAmountState] = useState<number | ''>(
+    state.intake.invoiceAmount > 0
+      ? state.intake.invoiceAmount
+      : state.gstState.customBillAmount || 0
   );
-  const [slab, setSlab] = useState<number>(18);
-  const [isInterstate, setIsInterstate] = useState<boolean>(false);
+  useEffect(() => {
+    if (state.intake.invoiceAmount > 0) {
+      setCustomInvoiceAmountState(state.intake.invoiceAmount);
+    } else if (state.gstState.customBillAmount !== customInvoiceAmount) {
+      setCustomInvoiceAmountState(state.gstState.customBillAmount || 0);
+    }
+  }, [state.intake.invoiceAmount, state.gstState.customBillAmount]);
+
+  const setCustomInvoiceAmount = (val: number | '') => {
+    setCustomInvoiceAmountState(val);
+    dispatch({
+      type: 'SET_GST_STATE',
+      payload: { customBillAmount: typeof val === 'number' ? val : 0 },
+    });
+  };
+
+  const slab = state.gstState.slab || state.treasuryDefaults.gstSlab || 18;
+  const setSlab = (nextSlab: number) => {
+    dispatch({ type: 'SET_GST_STATE', payload: { slab: nextSlab } });
+  };
+  const isInterstate = state.gstState.isInterstate;
+  const setIsInterstate = (nextInter: boolean) => {
+    dispatch({ type: 'SET_GST_STATE', payload: { isInterstate: nextInter } });
+  };
   const [daysElapsedGst, setDaysElapsedGst] = useState<number>(145);
   const [copiedWorkpaper, setCopiedWorkpaper] = useState<boolean>(false);
 
@@ -190,16 +175,22 @@ export const View03GstShield: React.FC = () => {
   const [daysElapsed43b, setDaysElapsed43b] = useState<number>(48);
   const [letterCopied, setLetterCopied] = useState<boolean>(false);
 
-  // Tab 4: TDS 26AS Reconciliation State
-  const [tdsItems, setTdsItems] = useState<TdsReceivableItem[]>(INITIAL_TDS_ITEMS);
-  const [selectedTdsClient, setSelectedTdsClient] = useState<string>('Larsen & Toubro Heavy Civil Infra');
+  // Tab 4: TDS 26AS Reconciliation State (synced with global workspaceStore)
+  const tdsItems = state.gstState.tdsItems;
+  const [selectedTdsClientState, setSelectedTdsClient] = useState<string>('');
+  const selectedTdsClient = useMemo(() => {
+    if (selectedTdsClientState && tdsItems.some((i) => i.clientName === selectedTdsClientState)) {
+      return selectedTdsClientState;
+    }
+    return tdsItems.find((i) => !i.creditedIn26AS)?.clientName || tdsItems[0]?.clientName || '';
+  }, [selectedTdsClientState, tdsItems]);
   const [copiedTdsNotice, setCopiedTdsNotice] = useState<boolean>(false);
   const tdsSummary = useMemo(() => calculateTdsReconciliation(tdsItems), [tdsItems]);
   const activeTdsNotice = useMemo(() => {
     const missingForClient = tdsItems.filter(
       (i) => i.clientName === selectedTdsClient && !i.creditedIn26AS
     );
-    return generateTdsDemandNotice(selectedTdsClient, missingForClient);
+    return generateTdsDemandNotice(selectedTdsClient || 'Counterparty Client', missingForClient);
   }, [selectedTdsClient, tdsItems]);
 
   // -------------------------------------------------------------
@@ -423,13 +414,31 @@ Generated by float. Statutory Compliance Engine`;
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
-          GST Compliance &amp; Statutory Tax Shield
-        </h1>
-        <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-          GSTR-2B Input Tax Credit reconciliation, Section 16(2) 180-day reversal clock, and Section 43B(h) buyer disallowance leverage.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold font-sans text-[var(--text-primary)]">
+            GST Compliance &amp; Statutory Tax Shield
+          </h1>
+          <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
+            GSTR-2B Input Tax Credit reconciliation, Section 16(2) 180-day reversal clock, and Section 43B(h) buyer disallowance leverage.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'LOAD_DEMO_PRESET', payload: 'gst' })}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/25 transition-colors"
+          >
+            Load Demo Preset
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'RESET_WORKSPACE_TO_BLANK', payload: 'gst' })}
+            className="px-3 py-1.5 rounded-lg text-xs font-mono border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Clear to Blank
+          </button>
+        </div>
       </div>
 
       {/* Institutional Explainer Banner */}
@@ -648,6 +657,13 @@ Generated by float. Statutory Compliance Engine`;
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-hairline)] text-xs font-mono">
+                  {vendorInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 px-4 text-center text-xs font-sans text-[var(--text-muted)]">
+                        No vendor bills loaded in your GSTR-2B register yet. Click <span className="font-semibold text-[var(--accent-primary)]">Load Demo Preset</span> above to test sample reconciliation &amp; holds.
+                      </td>
+                    </tr>
+                  ) : null}
                   {vendorInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
                       <td className="py-3 px-3 text-[var(--text-primary)] font-medium">
@@ -1303,6 +1319,13 @@ Generated by float. Statutory Compliance Engine`;
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-hairline)] text-xs font-mono">
+                  {tdsItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 px-4 text-center text-xs font-sans text-[var(--text-muted)]">
+                        No TDS 26AS receivables tracked yet. Click <span className="font-semibold text-[var(--accent-primary)]">Load Demo Preset</span> above to inspect mismatched Form 26AS deductions.
+                      </td>
+                    </tr>
+                  ) : null}
                   {tdsItems.map((item) => (
                     <tr
                       key={item.id}

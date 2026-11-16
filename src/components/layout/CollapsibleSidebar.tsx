@@ -180,10 +180,14 @@ export const CollapsibleSidebar: React.FC<SidebarProps> = ({ collapsed, onToggle
             </span>
           </div>
           <div className="text-xs font-sans font-bold text-[var(--text-primary)] truncate">
-            {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName}
+            {state.enterpriseProfile.tradingBrandName || state.enterpriseProfile.companyName || 'Your Enterprise'}
           </div>
           <div className="text-[10px] font-mono text-[var(--text-tertiary)] truncate mt-0.5 tabular-nums">
-            CC: ₹{(state.enterpriseProfile.sanctionedCcLimit / 100000).toFixed(1)}L @ {state.enterpriseProfile.bankOdInterestRate}%
+            {state.enterpriseProfile.sanctionedCcLimit > 0
+              ? `CC: ₹${(state.enterpriseProfile.sanctionedCcLimit / 100000).toFixed(1)}L @ ${state.enterpriseProfile.bankOdInterestRate}%`
+              : state.treasuryDefaults.currentBankBalance > 0
+              ? `Cash: ₹${(state.treasuryDefaults.currentBankBalance / 100000).toFixed(1)}L`
+              : 'Blank workspace • Click to configure'}
           </div>
         </div>
       )}

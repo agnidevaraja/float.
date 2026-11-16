@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Plug,
@@ -117,6 +117,35 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
   );
   const [treasurySavedToast, setTreasurySavedToast] = useState<boolean>(false);
 
+  // Sync local form state whenever workspaceStore changes (e.g. Demo Preset or Reset)
+  useEffect(() => {
+    setEnterpriseProfileState(state.enterpriseProfile || DEFAULT_ENTERPRISE_PROFILE);
+  }, [state.enterpriseProfile]);
+
+  useEffect(() => {
+    setTreasuryDefaults(state.treasuryDefaults);
+  }, [state.treasuryDefaults]);
+
+  const handleLoadFullDemo = () => {
+    dispatch({ type: 'LOAD_DEMO_PRESET', payload: 'all' });
+    setProfileSavedToast(true);
+    setTreasurySavedToast(true);
+    setTimeout(() => {
+      setProfileSavedToast(false);
+      setTreasurySavedToast(false);
+    }, 2500);
+  };
+
+  const handleResetFullWorkspace = () => {
+    dispatch({ type: 'RESET_WORKSPACE_TO_BLANK', payload: 'all' });
+    setProfileSavedToast(true);
+    setTreasurySavedToast(true);
+    setTimeout(() => {
+      setProfileSavedToast(false);
+      setTreasurySavedToast(false);
+    }, 2500);
+  };
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
@@ -184,9 +213,9 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
 
   const handleResetTreasuryToBaseline = () => {
     const baseline: TreasuryDefaults = {
-      currentBankBalance: 250000,
-      monthlyFixedExpenses: 160000,
-      bankOverdraftLimit: 100000,
+      currentBankBalance: 0,
+      monthlyFixedExpenses: 0,
+      bankOverdraftLimit: 0,
       gstRegistered: true,
       gstSlab: 18,
       defaultSupplyType: 'INTRA_STATE',
@@ -286,6 +315,34 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
       {/* SECTION 01: ENTERPRISE BUSINESS PROFILE & TREASURY IDENTITY */}
       {activeSection === 'profile' && (
         <div className="space-y-4">
+          {/* Quick Demo / Blank Workspace Banner */}
+          <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-sans font-semibold text-[var(--text-primary)]">
+                Workspace Quick Setup
+              </div>
+              <div className="text-[11px] font-sans text-[var(--text-muted)] mt-0.5">
+                Start with your own blank books, or populate sample MSME manufacturing data across all views for a walkthrough.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleLoadFullDemo}
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/25 transition-all duration-150"
+              >
+                Load Demo Preset
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFullWorkspace}
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all duration-150"
+              >
+                Clear / Reset to Blank
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left: Enterprise Details Form (7 cols) */}
             <form onSubmit={handleSaveEnterpriseProfile} className="lg:col-span-7 border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-4">
@@ -1047,13 +1104,22 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
                 Baseline financial parameters persisted in local storage. All new underwriting intakes inherit these baselines.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleResetTreasuryToBaseline}
-              className="px-2.5 py-1 text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-            >
-              Reset to Defaults
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleLoadFullDemo}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-semibold border border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/25 transition-colors"
+              >
+                Load Demo Preset
+              </button>
+              <button
+                type="button"
+                onClick={handleResetTreasuryToBaseline}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                Clear / Reset to Blank
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSaveTreasuryDefaults} className="space-y-4">
