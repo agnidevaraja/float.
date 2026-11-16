@@ -147,11 +147,12 @@ export const View05Benchmarks: React.FC = () => {
         trigger: 'axis',
         axisPointer: { type: 'line', lineStyle: { color: '#38BDF8', width: 1.5, type: 'dashed' } },
         formatter: (params: any) => {
+          if (!Array.isArray(params) || !params[0]?.data) return '';
           let html = `<div style="font-family:monospace;font-size:11px;padding:3px;">
-            <b style="color:#FAFAFA;">FPR: ${(params[0].data[0] * 100).toFixed(0)}%</b><br/>`;
+            <b style="color:#FAFAFA;">FPR: ${(Number(params[0].data[0] ?? 0) * 100).toFixed(0)}%</b><br/>`;
           for (const p of params) {
-            if (p.seriesName === 'Random Chance Baseline') continue;
-            html += `<span style="color:${p.color};">${p.seriesName.split(' (')[0]}:</span> <b>${(p.data[1] * 100).toFixed(1)}% TPR</b><br/>`;
+            if (!p?.data || p.seriesName === 'Random Chance Baseline') continue;
+            html += `<span style="color:${p.color};">${(p.seriesName || '').split(' (')[0]}:</span> <b>${(Number(p.data[1] ?? 0) * 100).toFixed(1)}% TPR</b><br/>`;
           }
           html += `</div>`;
           return html;
@@ -507,7 +508,7 @@ export const View05Benchmarks: React.FC = () => {
               {fmt(totalCapitalAtRisk)}
             </div>
             <span className="text-[9px] font-mono text-[var(--accent-danger)]">
-              {((totalCapitalAtRisk / totalPortfolioBook) * 100).toFixed(1)}% of total book
+              {(totalPortfolioBook > 0 ? (totalCapitalAtRisk / totalPortfolioBook) * 100 : 0).toFixed(1)}% of total book
             </span>
           </div>
 

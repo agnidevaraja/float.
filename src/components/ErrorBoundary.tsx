@@ -43,11 +43,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
-      const isDev = import.meta.env.DEV;
 
       return (
         <div className="flex items-center justify-center min-h-[400px] h-full w-full bg-[var(--bg-canvas)] text-[var(--text-primary)] p-6">
-          <div className="max-w-md w-full border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+          <div className="max-w-md w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--border-hairline)] pb-3 mb-4">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--accent-danger)]">
                 Isolated Module Recovery
@@ -61,15 +60,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               An isolated execution fault was intercepted. Your financial dataset and workspace state remain intact and secure.
             </p>
 
-            {isDev ? (
-              <pre className="text-[10px] font-mono text-[var(--text-tertiary)] bg-[var(--bg-elevated)] p-3 border border-[var(--border-hairline)] overflow-auto max-h-36 whitespace-pre-wrap mb-4">
-                {this.state.error?.message || 'Unknown runtime error'}
-              </pre>
-            ) : (
-              <div className="text-[10px] font-mono text-[var(--text-tertiary)] bg-[var(--bg-elevated)] p-2.5 border border-[var(--border-hairline)] mb-4">
-                Diagnostic: Safe execution boundary preserved.
-              </div>
-            )}
+            <pre className="text-[10px] font-mono text-[var(--text-tertiary)] bg-[var(--bg-elevated)] p-3 rounded-lg border border-[var(--border-hairline)] overflow-auto max-h-36 whitespace-pre-wrap mb-4">
+              {this.state.error?.message || 'Unknown runtime error'}
+            </pre>
 
             <div className="flex items-center gap-2">
               <button

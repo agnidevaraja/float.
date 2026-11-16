@@ -93,7 +93,12 @@ const EMPTY_PLANNER_STATE: PlannerWorkspaceState = {
 function loadEnterpriseProfile(): EnterpriseProfile {
   try {
     const raw = localStorage.getItem(DK_PROFILE);
-    if (raw) return { ...EMPTY_ENTERPRISE_PROFILE, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return { ...EMPTY_ENTERPRISE_PROFILE, ...parsed };
+      }
+    }
   } catch {}
   return { ...EMPTY_ENTERPRISE_PROFILE };
 }
@@ -101,7 +106,20 @@ function loadEnterpriseProfile(): EnterpriseProfile {
 function loadCustomBusinessProfile(): CustomBusinessProfile | null {
   try {
     const raw = localStorage.getItem(DK_CUSTOM_BIZ);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && typeof parsed.companyName === 'string') {
+        return {
+          ...parsed,
+          recordsCount: Number(parsed.recordsCount) || 0,
+          counterpartiesCount: Number(parsed.counterpartiesCount) || 0,
+          counterparties:
+            parsed.counterparties && typeof parsed.counterparties === 'object'
+              ? parsed.counterparties
+              : {},
+        };
+      }
+    }
   } catch {}
   return null;
 }
@@ -109,7 +127,19 @@ function loadCustomBusinessProfile(): CustomBusinessProfile | null {
 function loadDefaults(): TreasuryDefaults {
   try {
     const raw = localStorage.getItem(DK_DEFAULTS);
-    if (raw) return { ...EMPTY_TREASURY_DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...EMPTY_TREASURY_DEFAULTS,
+          ...parsed,
+          currentBankBalance: Number(parsed.currentBankBalance) || 0,
+          monthlyFixedExpenses: Number(parsed.monthlyFixedExpenses) || 0,
+          bankOverdraftLimit: Number(parsed.bankOverdraftLimit) || 0,
+          gstSlab: Number(parsed.gstSlab) || 18,
+        };
+      }
+    }
   } catch {}
   return { ...EMPTY_TREASURY_DEFAULTS };
 }
@@ -117,7 +147,24 @@ function loadDefaults(): TreasuryDefaults {
 function loadLedger(): LedgerEntry[] {
   try {
     const raw = localStorage.getItem(DK_LEDGER);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any, idx: number) => ({
+          id: String(item?.id || `INV-${idx + 1}`),
+          clientName: String(item?.clientName || 'Counterparty'),
+          invoiceAmount: Number(item?.invoiceAmount) || 0,
+          paymentTermDays: Number(item?.paymentTermDays) || 30,
+          riskPercent: Number(item?.riskPercent) || 0,
+          expectedArrivalDay: Number(item?.expectedArrivalDay) || 30,
+          status:
+            item?.status === 'OVERDUE' || item?.status === 'ON_TRACK' ? item.status : 'PENDING',
+          savedAt: item?.savedAt ? new Date(item.savedAt) : new Date(),
+          dueInDays: item?.dueInDays !== undefined ? Number(item.dueInDays) : undefined,
+          evaluated: typeof item?.evaluated === 'boolean' ? item.evaluated : undefined,
+        }));
+      }
+    }
   } catch {}
   return [];
 }
@@ -125,7 +172,20 @@ function loadLedger(): LedgerEntry[] {
 function loadGstState(defaults: TreasuryDefaults): GstWorkspaceState {
   try {
     const raw = localStorage.getItem(DK_GST_STATE);
-    if (raw) return { ...EMPTY_GST_STATE, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...EMPTY_GST_STATE,
+          ...parsed,
+          vendorInvoices: Array.isArray(parsed.vendorInvoices) ? parsed.vendorInvoices : [],
+          tdsItems: Array.isArray(parsed.tdsItems) ? parsed.tdsItems : [],
+          monthlyOutputGst: Number(parsed.monthlyOutputGst) || 0,
+          customBillAmount: Number(parsed.customBillAmount) || 0,
+          slab: Number(parsed.slab) || defaults.gstSlab || 18,
+        };
+      }
+    }
   } catch {}
   return {
     ...EMPTY_GST_STATE,
@@ -137,7 +197,19 @@ function loadGstState(defaults: TreasuryDefaults): GstWorkspaceState {
 function loadRunwayState(): RunwayWorkspaceState {
   try {
     const raw = localStorage.getItem(DK_RUNWAY_STATE);
-    if (raw) return { ...EMPTY_RUNWAY_STATE, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...EMPTY_RUNWAY_STATE,
+          ...parsed,
+          apBills: Array.isArray(parsed.apBills) ? parsed.apBills : [],
+          inventoryDays: Number(parsed.inventoryDays) || 0,
+          payableDays: Number(parsed.payableDays) || 0,
+          delayStressShockDays: Number(parsed.delayStressShockDays) || 0,
+        };
+      }
+    }
   } catch {}
   return { ...EMPTY_RUNWAY_STATE };
 }
@@ -145,7 +217,20 @@ function loadRunwayState(): RunwayWorkspaceState {
 function loadPlannerState(profile: EnterpriseProfile): PlannerWorkspaceState {
   try {
     const raw = localStorage.getItem(DK_PLANNER_STATE);
-    if (raw) return { ...EMPTY_PLANNER_STATE, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...EMPTY_PLANNER_STATE,
+          ...parsed,
+          rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+          monthlyRevenue: Number(parsed.monthlyRevenue) || 0,
+          expansionCapEx: Number(parsed.expansionCapEx) || 0,
+          avgReceivableDays: Number(parsed.avgReceivableDays) || 0,
+          horizonMonths: Number(parsed.horizonMonths) || 6,
+        };
+      }
+    }
   } catch {}
   return {
     ...EMPTY_PLANNER_STATE,
@@ -388,11 +473,22 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
           enterpriseProfile: { ...DEMO_ENTERPRISE_PROFILE },
           treasuryDefaults: { ...DEMO_TREASURY_DEFAULTS },
           intake: {
+            ...EMPTY_DEAL_REQUEST,
             ...state.intake,
+            invoiceAmount: state.intake.invoiceAmount > 0 ? state.intake.invoiceAmount : 140000,
+            paymentTermDays: state.intake.paymentTermDays > 0 ? state.intake.paymentTermDays : 30,
+            customerTenureMonths: state.intake.customerTenureMonths > 0 ? state.intake.customerTenureMonths : 14,
+            pastLatePercent: state.intake.clientName ? state.intake.pastLatePercent : 22,
+            orderSizeVsAvg: state.intake.orderSizeVsAvg > 0 ? state.intake.orderSizeVsAvg : 1.2,
+            pastAvgDelayDays: state.intake.clientName ? state.intake.pastAvgDelayDays : 8,
+            clientName: state.intake.clientName || 'Apex Precision Components',
+            gstin: state.intake.gstin || '27AABCA1234D1Z5',
             currentBankBalance: DEMO_TREASURY_DEFAULTS.currentBankBalance,
             monthlyFixedExpenses: DEMO_TREASURY_DEFAULTS.monthlyFixedExpenses,
             gstRegistered: DEMO_TREASURY_DEFAULTS.gstRegistered,
           },
+          currentResult: null,
+          phase: 'intake',
           ledger: [...DEMO_LEDGER_ENTRIES],
           gstState: {
             vendorInvoices: [...DEMO_GST_VENDOR_INVOICES],
@@ -426,11 +522,22 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
           enterpriseProfile: { ...DEMO_ENTERPRISE_PROFILE },
           treasuryDefaults: { ...DEMO_TREASURY_DEFAULTS },
           intake: {
+            ...EMPTY_DEAL_REQUEST,
             ...state.intake,
+            invoiceAmount: state.intake.invoiceAmount > 0 ? state.intake.invoiceAmount : 140000,
+            paymentTermDays: state.intake.paymentTermDays > 0 ? state.intake.paymentTermDays : 30,
+            customerTenureMonths: state.intake.customerTenureMonths > 0 ? state.intake.customerTenureMonths : 14,
+            pastLatePercent: state.intake.clientName ? state.intake.pastLatePercent : 22,
+            orderSizeVsAvg: state.intake.orderSizeVsAvg > 0 ? state.intake.orderSizeVsAvg : 1.2,
+            pastAvgDelayDays: state.intake.clientName ? state.intake.pastAvgDelayDays : 8,
+            clientName: state.intake.clientName || 'Apex Precision Components',
+            gstin: state.intake.gstin || '27AABCA1234D1Z5',
             currentBankBalance: DEMO_TREASURY_DEFAULTS.currentBankBalance,
             monthlyFixedExpenses: DEMO_TREASURY_DEFAULTS.monthlyFixedExpenses,
             gstRegistered: DEMO_TREASURY_DEFAULTS.gstRegistered,
           },
+          currentResult: null,
+          phase: 'intake',
           plannerState: {
             ...state.plannerState,
             companyName: DEMO_ENTERPRISE_PROFILE.companyName,

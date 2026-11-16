@@ -734,7 +734,7 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
                     -₹{Math.round((1000000 * (enterpriseProfile.bankOdInterestRate / 100)) / 365)}/day
                   </div>
                   <div className="text-[9px] text-[var(--text-muted)] mt-0.5">
-                    Erodes {((enterpriseProfile.bankOdInterestRate / 12) / enterpriseProfile.typicalGrossMarginPercent * 100).toFixed(1)}% margin/mo
+                    Erodes {(enterpriseProfile.typicalGrossMarginPercent > 0 ? ((enterpriseProfile.bankOdInterestRate / 12) / enterpriseProfile.typicalGrossMarginPercent * 100) : 0).toFixed(1)}% margin/mo
                   </div>
                 </div>
               </div>

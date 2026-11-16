@@ -355,11 +355,14 @@ export const View04AgeingMatrix: React.FC = () => {
         trigger: 'axis',
         axisPointer: { type: 'line', lineStyle: { color: '#52525B', width: 1.5, type: 'dashed' } },
         formatter: (params: any) => {
-          const idx = params[0].dataIndex;
+          const first = Array.isArray(params) ? params[0] : params;
+          if (!first || first.dataIndex === undefined) return '';
+          const idx = first.dataIndex;
+          const clientRow = sorted.slice().reverse()[idx];
           return `<div style="font-family:monospace;font-size:11px;padding:4px;">
-            <b style="color:#FAFAFA;">${sorted.slice().reverse()[idx].client}</b><br/>
-            Outstanding: <b style="color:#3B82F6;">${formatINR(amounts[idx])}</b><br/>
-            Risk Score: <b>${risks[idx].toFixed(1)}%</b>
+            <b style="color:#FAFAFA;">${clientRow?.client ?? 'Counterparty'}</b><br/>
+            Outstanding: <b style="color:#3B82F6;">${formatINR(amounts[idx] ?? 0)}</b><br/>
+            Risk Score: <b>${Number(risks[idx] ?? 0).toFixed(1)}%</b>
           </div>`;
         },
         backgroundColor: '#111113',
@@ -404,7 +407,7 @@ export const View04AgeingMatrix: React.FC = () => {
             show: true,
             position: 'right',
             distance: 10,
-            formatter: (p: any) => `${formatINR(p.value)} (${risks[p.dataIndex].toFixed(0)}% risk)`,
+            formatter: (p: any) => `${formatINR(p?.value ?? 0)} (${Number(risks[p?.dataIndex] ?? 0).toFixed(0)}% risk)`,
             color: '#FAFAFA',
             fontSize: 10,
             fontFamily: 'monospace',

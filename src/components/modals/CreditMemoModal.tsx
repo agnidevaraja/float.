@@ -54,19 +54,19 @@ Invoice Principal: INR ${intake.invoiceAmount.toLocaleString('en-IN')}
 Agreed Payment Terms: Net-${intake.paymentTermDays} Days
 
 1. CREDIT RISK EVALUATION:
-- Probability of Late Settlement: ${result.blendedRiskPercent.toFixed(1)}%
-- Expected Settlement: Day ${result.expectedArrivalDay} (P20: Day ${result.arrivalWindowLow} | P80: Day ${result.arrivalWindowHigh})
-- Total Capital at Risk: INR ${result.totalAtRisk.toLocaleString('en-IN')}
+- Probability of Late Settlement: ${Number(result?.blendedRiskPercent ?? 0).toFixed(1)}%
+- Expected Settlement: Day ${result?.expectedArrivalDay ?? 30} (P20: Day ${result?.arrivalWindowLow ?? 24} | P80: Day ${result?.arrivalWindowHigh ?? 38})
+- Total Capital at Risk: INR ${Number(result?.totalAtRisk ?? 0).toLocaleString('en-IN')}
 - Engine Mode: ${provenance}
 
 2. STATUTORY PROTECTIONS:
 - Section 43B(h) Disallowance Window: 45 Days
 - Section 16 MSMED Act Penal Interest Rate: 20.25% p.a. (3x RBI Bank Rate)
-- GST Section 16(2) ITC Locked: INR ${result.gstItcLocked.toLocaleString('en-IN')}
+- GST Section 16(2) ITC Locked: INR ${Number(result?.gstItcLocked ?? 0).toLocaleString('en-IN')}
 
 3. UNDERWRITING DETERMINATION:
-- Decision: ${result.recommendedTerms.badgeLabel}
-- Recommendation: ${result.recommendedTerms.rationale}
+- Decision: ${result?.recommendedTerms?.badgeLabel ?? 'Standard Terms'}
+- Recommendation: ${result?.recommendedTerms?.rationale ?? 'Monitor receivable against Section 43B(h) 45-day window.'}
 
 Approved by Credit Committee.`;
 
@@ -189,25 +189,25 @@ Approved by Credit Committee.`;
               <div>
                 <span className="text-[9px] text-[var(--text-muted)] block">Default Probability</span>
                 <span className="text-base font-bold tabular-nums block mt-0.5" style={{ color: riskColor }}>
-                  {result.blendedRiskPercent.toFixed(1)}%
+                  {Number(result?.blendedRiskPercent ?? 0).toFixed(1)}%
                 </span>
               </div>
               <div>
                 <span className="text-[9px] text-[var(--text-muted)] block">Expected Settlement</span>
                 <span className="text-base font-bold text-[var(--text-primary)] tabular-nums block mt-0.5">
-                  Day {result.expectedArrivalDay}
+                  Day {result?.expectedArrivalDay ?? 30}
                 </span>
               </div>
               <div>
                 <span className="text-[9px] text-[var(--text-muted)] block">Settlement Window (P20-P80)</span>
                 <span className="font-bold text-[var(--text-primary)] tabular-nums block mt-0.5">
-                  Day {result.arrivalWindowLow} - Day {result.arrivalWindowHigh}
+                  Day {result?.arrivalWindowLow ?? 24} - Day {result?.arrivalWindowHigh ?? 38}
                 </span>
               </div>
               <div>
                 <span className="text-[9px] text-[var(--text-muted)] block">Total Capital At Risk</span>
                 <span className="font-bold text-[var(--accent-warn)] tabular-nums block mt-0.5">
-                  {fmt(result.totalAtRisk)}
+                  {fmt(Number(result?.totalAtRisk ?? 0))}
                 </span>
               </div>
             </div>

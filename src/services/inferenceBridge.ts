@@ -102,6 +102,87 @@ export async function checkColabHealth(config: ApiConfig): Promise<ColabHealthRe
 /**
  * 2. POST {baseUrl}/predict -> DealPayload -> EnsembleDecisionResponse
  */
+function finiteNum(val: any, fallback: number): number {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function sanitizeEnsembleDossier(raw: any, payload: DealPayload): EnsembleDecisionResponse {
+  const base = fallbackEnsembleCalculation(payload);
+  if (!raw || typeof raw !== 'object') return base;
+
+  const rawSub = raw.sub_scores && typeof raw.sub_scores === 'object' ? raw.sub_scores : {};
+  const rawArr = raw.arrival_forecast && typeof raw.arrival_forecast === 'object' ? raw.arrival_forecast : {};
+  const rawRun = raw.runway_summary && typeof raw.runway_summary === 'object' ? raw.runway_summary : {};
+  const rawGst = raw.gst_and_exposure && typeof raw.gst_and_exposure === 'object' ? raw.gst_and_exposure : {};
+  const rawFair = raw.fairness_and_audit && typeof raw.fairness_and_audit === 'object' ? raw.fairness_and_audit : {};
+  const rawRec = raw.recommended_structure && typeof raw.recommended_structure === 'object' ? raw.recommended_structure : {};
+
+  const shapDrivers = Array.isArray(raw.shap_drivers)
+    ? raw.shap_drivers.map((d: any) => ({
+        feature: String(d?.feature ?? d?.factor ?? 'Risk Factor'),
+        contribution: finiteNum(d?.contribution ?? d?.impactScore, 0),
+        direction: (d?.direction === 'REDUCES_RISK' || d?.direction === 'RISK_REDUCE'
+          ? 'REDUCES_RISK'
+          : 'INCREASES_RISK') as 'INCREASES_RISK' | 'REDUCES_RISK',
+        description: String(d?.description ?? d?.explanation ?? 'Calibrated feature contribution.'),
+      }))
+    : base.shap_drivers;
+
+  return {
+    ...base,
+    blended_risk_percent: finiteNum(raw.blended_risk_percent, base.blended_risk_percent),
+    risk_tier: raw.risk_tier || base.risk_tier,
+    sub_scores: {
+      ...base.sub_scores,
+      macro_credit_risk: finiteNum(rawSub.macro_credit_risk, base.sub_scores.macro_credit_risk),
+      counterparty_history_risk: finiteNum(rawSub.counterparty_history_risk, base.sub_scores.counterparty_history_risk),
+      sizing_anomaly_risk: finiteNum(rawSub.sizing_anomaly_risk, base.sub_scores.sizing_anomaly_risk),
+      liquidity_stress_risk: finiteNum(rawSub.liquidity_stress_risk, base.sub_scores.liquidity_stress_risk),
+    },
+    arrival_forecast: {
+      ...base.arrival_forecast,
+      expected_day: finiteNum(rawArr.expected_day, base.arrival_forecast.expected_day),
+      window_low: finiteNum(rawArr.window_low, base.arrival_forecast.window_low),
+      window_high: finiteNum(rawArr.window_high, base.arrival_forecast.window_high),
+      delay_prob_pct: finiteNum(rawArr.delay_prob_pct, base.arrival_forecast.delay_prob_pct),
+    },
+    runway_summary: {
+      ...base.runway_summary,
+      current_balance: finiteNum(rawRun.current_balance, base.runway_summary.current_balance),
+      is_collision: typeof rawRun.is_collision === 'boolean' ? rawRun.is_collision : base.runway_summary.is_collision,
+      collision_day: rawRun.collision_day !== undefined ? rawRun.collision_day : base.runway_summary.collision_day,
+      balance_at_arrival: finiteNum(rawRun.balance_at_arrival, base.runway_summary.balance_at_arrival),
+      shortfall: finiteNum(rawRun.shortfall, base.runway_summary.shortfall),
+    },
+    gst_and_exposure: {
+      ...base.gst_and_exposure,
+      locked_itc: finiteNum(rawGst.locked_itc, base.gst_and_exposure.locked_itc),
+      rule37_clawback_risk: typeof rawGst.rule37_clawback_risk === 'boolean' ? rawGst.rule37_clawback_risk : base.gst_and_exposure.rule37_clawback_risk,
+      total_at_risk: finiteNum(rawGst.total_at_risk, base.gst_and_exposure.total_at_risk),
+      net_exposure_after_advance: finiteNum(rawGst.net_exposure_after_advance, base.gst_and_exposure.net_exposure_after_advance),
+    },
+    fairness_and_audit: {
+      ...base.fairness_and_audit,
+      thin_file: typeof rawFair.thin_file === 'boolean' ? rawFair.thin_file : base.fairness_and_audit.thin_file,
+      false_positive_rate_pct: finiteNum(rawFair.false_positive_rate_pct, base.fairness_and_audit.false_positive_rate_pct),
+      audited_roc_auc: finiteNum(rawFair.audited_roc_auc, base.fairness_and_audit.audited_roc_auc),
+    },
+    recommended_structure: {
+      ...base.recommended_structure,
+      tier: String(rawRec.tier ?? base.recommended_structure.tier),
+      badge_label: String(rawRec.badge_label ?? base.recommended_structure.badge_label),
+      upfront_pct: finiteNum(rawRec.upfront_pct, base.recommended_structure.upfront_pct),
+      delivery_pct: finiteNum(rawRec.delivery_pct, base.recommended_structure.delivery_pct),
+      net_term_days: finiteNum(rawRec.net_term_days, base.recommended_structure.net_term_days),
+      exposure_reduction_pct: finiteNum(rawRec.exposure_reduction_pct, base.recommended_structure.exposure_reduction_pct),
+      contract_clause: String(rawRec.contract_clause ?? base.recommended_structure.contract_clause),
+      rationale: String(rawRec.rationale ?? base.recommended_structure.rationale),
+    },
+    shap_drivers: shapDrivers,
+  };
+}
+
 export async function evaluateDealWithColab(
   payload: DealPayload,
   config: ApiConfig
@@ -126,8 +207,8 @@ export async function evaluateDealWithColab(
 
       if (res.ok) {
         const data = await res.json();
-        if (data.blended_risk_percent !== undefined) {
-          return data as EnsembleDecisionResponse;
+        if (data && data.blended_risk_percent !== undefined) {
+          return sanitizeEnsembleDossier(data, payload);
         }
       }
     } catch (err) {
@@ -166,8 +247,10 @@ export async function evaluateBatchDealsWithColab(
 
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.results)) {
-          return data.results as EnsembleDecisionResponse[];
+        if (Array.isArray(data?.results)) {
+          return data.results.map((item: any, idx: number) =>
+            sanitizeEnsembleDossier(item, invoices[idx] || invoices[0] || ({} as DealPayload))
+          );
         }
       }
     } catch (err) {
@@ -244,7 +327,21 @@ export async function simulateBusinessPlan(
       clearTimeout(tid);
 
       if (res.ok) {
-        return (await res.json()) as BusinessPlanResponse;
+        const data = await res.json();
+        if (data && Array.isArray(data.monthly_projection)) {
+          return {
+            starting_cash_after_capex: finiteNum(data.starting_cash_after_capex, req.current_cash - req.planned_expansion_cost),
+            ending_cash_month_6: finiteNum(data.ending_cash_month_6, req.current_cash),
+            effective_collection_efficiency_pct: finiteNum(data.effective_collection_efficiency_pct, 85),
+            monthly_projection: data.monthly_projection.map((m: any, idx: number) => ({
+              month: finiteNum(m?.month, idx + 1),
+              projected_cash: finiteNum(m?.projected_cash, 0),
+              collected_revenue: finiteNum(m?.collected_revenue, 0),
+              fixed_outflow: finiteNum(m?.fixed_outflow, req.monthly_expenses),
+              solvency_status: m?.solvency_status === 'DEFICIT' || m?.solvency_status === 'TIGHT' ? m.solvency_status : 'HEALTHY',
+            })),
+          };
+        }
       }
     } catch (err) {
       console.warn('[Veritas Bridge] Colab /plan failed, calculating locally:', err);
@@ -281,7 +378,14 @@ export async function askCopilotLive(
       clearTimeout(tid);
 
       if (res.ok) {
-        return (await res.json()) as CopilotResponse;
+        const data = await res.json();
+        if (data && typeof data.reply === 'string') {
+          return {
+            reply: data.reply,
+            tools_used: Array.isArray(data.tools_used) ? data.tools_used : [],
+            model: String(data.model ?? 'Colab Remote GPU'),
+          };
+        }
       }
     } catch (err) {
       console.warn('[Veritas Bridge] Colab /copilot failed, generating locally:', err);
@@ -319,7 +423,23 @@ export async function solveOptimalDynamicDiscountWithColab(
       clearTimeout(tid);
 
       if (res.ok) {
-        return (await res.json()) as DynamicDiscountingResponse;
+        const data = await res.json();
+        const fallback = solveOptimalDynamicDiscounting(req);
+        if (data && typeof data === 'object' && Array.isArray(data.comparison_tiers)) {
+          return {
+            ...fallback,
+            ...data,
+            optimal_discount_pct: finiteNum(data.optimal_discount_pct, fallback.optimal_discount_pct),
+            optimal_discount_cost: finiteNum(data.optimal_discount_cost, fallback.optimal_discount_cost),
+            immediate_cash_inflow: finiteNum(data.immediate_cash_inflow, fallback.immediate_cash_inflow),
+            bank_od_carrying_cost: finiteNum(data.bank_od_carrying_cost, fallback.bank_od_carrying_cost),
+            net_benefit_vs_bank_od: finiteNum(data.net_benefit_vs_bank_od, fallback.net_benefit_vs_bank_od),
+            annualized_discount_apr: finiteNum(data.annualized_discount_apr, fallback.annualized_discount_apr),
+            bank_od_apr: finiteNum(data.bank_od_apr, fallback.bank_od_apr),
+            days_accelerated: finiteNum(data.days_accelerated, fallback.days_accelerated),
+            comparison_tiers: data.comparison_tiers,
+          };
+        }
       }
     } catch (err) {
       console.warn('[Veritas Bridge] Colab /runway/optimal-discount failed, solving locally:', err);
@@ -469,44 +589,50 @@ export async function evaluateInvoicePipeline(
   }
 
   try {
-    const dossier = await evaluateDealWithColab(payload, config);
+    const rawDossier = await evaluateDealWithColab(payload, config);
+    const dossier = sanitizeEnsembleDossier(rawDossier, payload);
+    const localBaseline = evaluateB2bPaymentRisk(req as any);
     const ms = Math.round(performance.now() - t0);
 
     return {
-      blendedRiskPercent: dossier.blended_risk_percent,
-      b2bMacroRiskPercent: dossier.sub_scores.macro_credit_risk,
-      creditDefaultRiskPercent: dossier.sub_scores.counterparty_history_risk,
-      fraudSpikeRiskPercent: dossier.sub_scores.sizing_anomaly_risk,
-      expectedArrivalDay: dossier.arrival_forecast.expected_day,
-      arrivalWindowLow: dossier.arrival_forecast.window_low,
-      arrivalWindowHigh: dossier.arrival_forecast.window_high,
-      isRunwayCollision: dossier.runway_summary.is_collision,
-      collisionDay: dossier.runway_summary.collision_day,
-      cashBufferAtArrival: dossier.runway_summary.balance_at_arrival,
-      shortfallAmount: dossier.runway_summary.shortfall,
-      gstItcLocked: dossier.gst_and_exposure.locked_itc,
-      totalAtRisk: dossier.gst_and_exposure.total_at_risk,
-      thinFileMode: dossier.fairness_and_audit.thin_file,
+      ...localBaseline,
+      blendedRiskPercent: finiteNum(dossier.blended_risk_percent, localBaseline.blendedRiskPercent),
+      b2bMacroRiskPercent: finiteNum(dossier.sub_scores?.macro_credit_risk, localBaseline.b2bMacroRiskPercent),
+      creditDefaultRiskPercent: finiteNum(dossier.sub_scores?.counterparty_history_risk, localBaseline.creditDefaultRiskPercent),
+      fraudSpikeRiskPercent: finiteNum(dossier.sub_scores?.sizing_anomaly_risk, localBaseline.fraudSpikeRiskPercent),
+      expectedArrivalDay: finiteNum(dossier.arrival_forecast?.expected_day, localBaseline.expectedArrivalDay),
+      arrivalWindowLow: finiteNum(dossier.arrival_forecast?.window_low, localBaseline.arrivalWindowLow),
+      arrivalWindowHigh: finiteNum(dossier.arrival_forecast?.window_high, localBaseline.arrivalWindowHigh),
+      isRunwayCollision: Boolean(dossier.runway_summary?.is_collision ?? localBaseline.isRunwayCollision),
+      collisionDay: dossier.runway_summary?.collision_day ?? localBaseline.collisionDay,
+      cashBufferAtArrival: finiteNum(dossier.runway_summary?.balance_at_arrival, localBaseline.cashBufferAtArrival),
+      shortfallAmount: finiteNum(dossier.runway_summary?.shortfall, localBaseline.shortfallAmount),
+      gstItcLocked: finiteNum(dossier.gst_and_exposure?.locked_itc, localBaseline.gstItcLocked),
+      totalAtRisk: finiteNum(dossier.gst_and_exposure?.total_at_risk, localBaseline.totalAtRisk),
+      thinFileMode: Boolean(dossier.fairness_and_audit?.thin_file ?? localBaseline.thinFileMode),
       provenance: 'LIVE_COLAB',
       latencyMs: ms,
-      integrityWarnings: dossier.runway_summary.is_collision
-        ? [{ code: 'RUNWAY_COLLISION', title: 'Cash Buffer Exhaustion', description: `Bank balance depleted by Day ${dossier.runway_summary.collision_day}.`, severity: 'CRITICAL' }]
-        : [],
-      topShapFactors: dossier.shap_drivers.map((d) => ({
-        factor: d.feature,
-        impactScore: d.contribution,
-        direction: d.direction === 'INCREASES_RISK' ? 'RISK_INCREASE' : 'RISK_REDUCE',
-        explanation: d.description,
-      })),
+      integrityWarnings: dossier.runway_summary?.is_collision
+        ? [{ code: 'RUNWAY_COLLISION', title: 'Cash Buffer Exhaustion', description: `Bank balance depleted by Day ${dossier.runway_summary.collision_day ?? 'N/A'}.`, severity: 'CRITICAL' }]
+        : localBaseline.integrityWarnings || [],
+      topShapFactors:
+        Array.isArray(dossier.shap_drivers) && dossier.shap_drivers.length > 0
+          ? dossier.shap_drivers.map((d) => ({
+              factor: d?.feature || 'Risk Factor',
+              impactScore: finiteNum(d?.contribution, 0),
+              direction: d?.direction === 'INCREASES_RISK' ? 'RISK_INCREASE' : 'RISK_REDUCE',
+              explanation: d?.description || 'Calibrated feature contribution.',
+            }))
+          : localBaseline.topShapFactors,
       recommendedTerms: {
-        tier: dossier.recommended_structure.tier as any,
-        badgeLabel: dossier.recommended_structure.badge_label,
-        upfrontPercent: dossier.recommended_structure.upfront_pct,
-        onDeliveryPercent: dossier.recommended_structure.delivery_pct,
-        netTermDays: dossier.recommended_structure.net_term_days,
-        exposureReductionPercent: dossier.recommended_structure.exposure_reduction_pct,
-        contractClause: dossier.recommended_structure.contract_clause,
-        rationale: dossier.recommended_structure.rationale,
+        tier: (dossier.recommended_structure?.tier || localBaseline.recommendedTerms.tier) as any,
+        badgeLabel: dossier.recommended_structure?.badge_label || localBaseline.recommendedTerms.badgeLabel,
+        upfrontPercent: finiteNum(dossier.recommended_structure?.upfront_pct, localBaseline.recommendedTerms.upfrontPercent),
+        onDeliveryPercent: finiteNum(dossier.recommended_structure?.delivery_pct, localBaseline.recommendedTerms.onDeliveryPercent),
+        netTermDays: finiteNum(dossier.recommended_structure?.net_term_days, localBaseline.recommendedTerms.netTermDays),
+        exposureReductionPercent: finiteNum(dossier.recommended_structure?.exposure_reduction_pct, localBaseline.recommendedTerms.exposureReductionPercent),
+        contractClause: dossier.recommended_structure?.contract_clause || localBaseline.recommendedTerms.contractClause,
+        rationale: dossier.recommended_structure?.rationale || localBaseline.recommendedTerms.rationale,
       },
       ensembleDossier: dossier,
     };

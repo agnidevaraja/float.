@@ -178,31 +178,30 @@ export const View01DealWorkbench: React.FC = () => {
 
   const handleDecision = (type: 'APPROVE' | 'COUNTER' | 'DECLINE') => {
     if (!state.currentResult) return;
+    const recTerms = state.currentResult.recommendedTerms;
     const term =
       type === 'COUNTER'
-        ? state.currentResult.recommendedTerms.netTermDays
-        : local.paymentTermDays;
+        ? recTerms?.netTermDays ?? local.paymentTermDays ?? 30
+        : local.paymentTermDays ?? 30;
+    const baseRisk = Number(state.currentResult.blendedRiskPercent ?? 0);
+    const expReduction = Number(recTerms?.exposureReductionPercent ?? 0);
     const risk =
       type === 'COUNTER'
-        ? Math.max(
-            10,
-            state.currentResult.blendedRiskPercent *
-              (1 - state.currentResult.recommendedTerms.exposureReductionPercent / 100)
-          )
+        ? Math.max(10, baseRisk * (1 - expReduction / 100))
         : type === 'DECLINE'
         ? 95
-        : state.currentResult.blendedRiskPercent;
+        : baseRisk;
 
     dispatch({
       type: 'ADD_LEDGER_ENTRY',
       payload: {
         id: `DEAL-${Date.now().toString().slice(-4)}`,
         clientName: (local as any).clientName || 'Counterparty Deal',
-        invoiceAmount: local.invoiceAmount,
+        invoiceAmount: Number(local.invoiceAmount) || 0,
         paymentTermDays: term,
         riskPercent: risk,
         expectedArrivalDay:
-          type === 'COUNTER' ? term + 2 : state.currentResult.expectedArrivalDay,
+          type === 'COUNTER' ? term + 2 : Number(state.currentResult.expectedArrivalDay ?? term),
         status:
           type === 'DECLINE' ? 'OVERDUE' : type === 'APPROVE' ? 'ON_TRACK' : 'PENDING',
         dueInDays: term,
@@ -214,8 +213,8 @@ export const View01DealWorkbench: React.FC = () => {
 
   // Cumulative Credit Exposure Calculation
   const activeClientName = ((local as any).clientName || '').trim();
-  const existingLedgerInvoices = state.ledger.filter(
-    (l) => activeClientName && l.clientName.toLowerCase() === activeClientName.toLowerCase()
+  const existingLedgerInvoices = (state.ledger || []).filter(
+    (l) => activeClientName && (l.clientName || '').toLowerCase() === activeClientName.toLowerCase()
   );
   const existingBalance = existingLedgerInvoices.reduce((acc, curr) => acc + curr.invoiceAmount, 0);
   const defaultCreditLimit =
@@ -296,7 +295,7 @@ export const View01DealWorkbench: React.FC = () => {
                   {p.name}
                 </div>
                 <div className="text-[11px] font-mono text-[var(--text-muted)] mt-1 truncate tabular-nums">
-                  ₹{(p.params.invoiceAmount / 1000).toFixed(0)}k • Net-{p.params.paymentTermDays}
+                  ₹{((p?.params?.invoiceAmount ?? 0) / 1000).toFixed(0)}k • Net-{p?.params?.paymentTermDays ?? 30}
                 </div>
               </button>
             );
@@ -320,7 +319,7 @@ export const View01DealWorkbench: React.FC = () => {
             {/* Quick-recall counterparty buttons */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[9px] uppercase text-[var(--text-tertiary)]">Recall:</span>
-              {Object.values(state.customBusinessProfile.counterparties).slice(0, 4).map((cp: any) => (
+              {Object.values(state.customBusinessProfile?.counterparties || {}).slice(0, 4).map((cp: any) => (
                 <button
                   key={cp.name}
                   type="button"
@@ -680,17 +679,42 @@ function DossierPhase({
 }: any) {
   const [decisionNotice, setDecisionNotice] = useState<string | null>(null);
 
+  const safeRisk = Number.isFinite(Number(result?.blendedRiskPercent))
+    ? Number(result.blendedRiskPercent)
+    : 0;
+  const safeArrival = Number.isFinite(Number(result?.expectedArrivalDay))
+    ? Number(result.expectedArrivalDay)
+    : Number(intake?.paymentTermDays || 30);
+  const safeLow = Number.isFinite(Number(result?.arrivalWindowLow))
+    ? Number(result.arrivalWindowLow)
+    : Math.max(1, safeArrival - 6);
+  const safeHigh = Number.isFinite(Number(result?.arrivalWindowHigh))
+    ? Number(result.arrivalWindowHigh)
+    : safeArrival + 8;
+  const safeGstItc = Number.isFinite(Number(result?.gstItcLocked))
+    ? Number(result.gstItcLocked)
+    : 0;
+  const safeTotalAtRisk = Number.isFinite(Number(result?.totalAtRisk))
+    ? Number(result.totalAtRisk)
+    : 0;
+  const safeCashBuffer = Number.isFinite(Number(result?.cashBufferAtArrival))
+    ? Number(result.cashBufferAtArrival)
+    : 0;
+  const safeWarnings = Array.isArray(result?.integrityWarnings) ? result.integrityWarnings : [];
+  const safeShapFactors = Array.isArray(result?.topShapFactors) ? result.topShapFactors : [];
+  const safeWhatIfs = Array.isArray(whatIfs) ? whatIfs : [];
+
   const riskColor =
-    result.blendedRiskPercent < 30
+    safeRisk < 30
       ? 'var(--accent-safe)'
-      : result.blendedRiskPercent < 60
+      : safeRisk < 60
       ? 'var(--accent-warn)'
       : 'var(--accent-danger)';
 
   const riskTier =
-    result.blendedRiskPercent < 30
+    safeRisk < 30
       ? 'LOW DELAY RISK'
-      : result.blendedRiskPercent < 60
+      : safeRisk < 60
       ? 'MODERATE DELAY RISK'
       : 'HIGH DEFAULT RISK';
 
@@ -698,7 +722,7 @@ function DossierPhase({
     onDecision(type);
     const label =
       type === 'APPROVE'
-        ? `Deal Approved & Logged to Ledger (Net-${intake.paymentTermDays})`
+        ? `Deal Approved & Logged to Ledger (Net-${intake?.paymentTermDays || 30})`
         : type === 'COUNTER'
         ? `Counter-Offer Generated (25% Upfront Deposit + Net-15)`
         : 'Deal Declined (Capital Protected)';
@@ -707,7 +731,7 @@ function DossierPhase({
   };
 
   // TReDS Factoring Yield Calculation
-  const tredsYield = calculateTredsYield(intake.invoiceAmount, intake.paymentTermDays || 45, 8.5, 0.05);
+  const tredsYield = calculateTredsYield(Number(intake?.invoiceAmount) || 0, Number(intake?.paymentTermDays) || 45, 8.5, 0.05);
 
   const odInterestRate = enterpriseProfile?.bankOdInterestRate > 0 ? enterpriseProfile.bankOdInterestRate : 12.0;
   const defaultMargin = enterpriseProfile?.typicalGrossMarginPercent > 0 ? enterpriseProfile.typicalGrossMarginPercent : 18.0;
@@ -718,27 +742,27 @@ function DossierPhase({
   const earlyDiscountResult = useMemo(
     () =>
       calculateEarlyPaymentDiscountAPR(
-        intake.invoiceAmount,
-        intake.paymentTermDays || 45,
+        Number(intake?.invoiceAmount) || 0,
+        Number(intake?.paymentTermDays) || 45,
         earlyPayDay,
         discountPct,
         odInterestRate,
         8.5
       ),
-    [intake.invoiceAmount, intake.paymentTermDays, earlyPayDay, discountPct, odInterestRate]
+    [intake?.invoiceAmount, intake?.paymentTermDays, earlyPayDay, discountPct, odInterestRate]
   );
 
   const [nominalMargin, setNominalMargin] = useState<number>(defaultMargin);
-  const delayDays = Math.max(0, result.expectedArrivalDay - (intake.paymentTermDays || 30));
+  const delayDays = Math.max(0, safeArrival - (Number(intake?.paymentTermDays) || 30));
   const erosionResult = useMemo(
     () =>
       calculateOverdraftFinancingCost(
-        intake.invoiceAmount,
+        Number(intake?.invoiceAmount) || 0,
         delayDays,
         nominalMargin,
         odInterestRate
       ),
-    [intake.invoiceAmount, delayDays, nominalMargin, odInterestRate]
+    [intake?.invoiceAmount, delayDays, nominalMargin, odInterestRate]
   );
 
   // Underwriting Intelligence Visualization Suite
@@ -769,10 +793,11 @@ function DossierPhase({
         trigger: 'axis',
         axisPointer: { type: 'line', lineStyle: { color: '#38BDF8', width: 1.5, type: 'dashed' } },
         formatter: (params: any) => {
-          const p = params[0];
+          const p = Array.isArray(params) ? params[0] : params;
+          if (!p) return '';
           return `<div style="font-family:monospace;font-size:11px;padding:3px;">
-            <b style="color:#FAFAFA;">${p.name}</b><br/>
-            Settlement Probability Density: <b style="color:#38BDF8;">${p.value}%</b>
+            <b style="color:#FAFAFA;">${p.name ?? ''}</b><br/>
+            Settlement Probability Density: <b style="color:#38BDF8;">${p.value ?? 0}%</b>
           </div>`;
         },
       },
@@ -912,11 +937,13 @@ function DossierPhase({
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
-          const p = params[0];
-          const isInc = p.value >= 0;
+          const p = Array.isArray(params) ? params[0] : params;
+          if (!p) return '';
+          const val = Number(p.value ?? 0);
+          const isInc = val >= 0;
           return `<div style="font-family:monospace;font-size:11px;padding:3px;">
-            <b style="color:#FAFAFA;">${p.name}</b><br/>
-            Risk Contribution: <b style="color:${isInc ? '#EF4444' : '#10B981'};">${isInc ? '+' : ''}${p.value}%</b>
+            <b style="color:#FAFAFA;">${p.name ?? ''}</b><br/>
+            Risk Contribution: <b style="color:${isInc ? '#EF4444' : '#10B981'};">${isInc ? '+' : ''}${val}%</b>
           </div>`;
         },
       },
@@ -1087,7 +1114,7 @@ function DossierPhase({
                 className="text-4xl font-mono font-bold tabular-nums"
                 style={{ color: riskColor }}
               >
-                {result.blendedRiskPercent.toFixed(1)}%
+                {safeRisk.toFixed(1)}%
               </span>
               <span
                 className="text-xs font-mono font-semibold uppercase px-2 py-0.5 border"
@@ -1102,10 +1129,10 @@ function DossierPhase({
               Expected Settlement
             </div>
             <div className="text-lg font-mono font-semibold text-[var(--text-primary)] tabular-nums mt-0.5">
-              Day {result.expectedArrivalDay}
+              Day {safeArrival}
             </div>
             <div className="text-[10px] font-mono text-[var(--text-tertiary)]">
-              P20: Day {result.arrivalWindowLow} | P80: Day {result.arrivalWindowHigh}
+              P20: Day {safeLow} | P80: Day {safeHigh}
             </div>
           </div>
         </div>
@@ -1156,10 +1183,10 @@ function DossierPhase({
 
         {/* Financial Exposure KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-[var(--border-hairline)] border border-[var(--border-hairline)] bg-[var(--bg-canvas)]">
-          <KPICell label="INVOICE PRINCIPAL" value={fmt(intake.invoiceAmount)} color="var(--text-primary)" sub={`Net-${intake.paymentTermDays} payment terms`} />
-          <KPICell label="GST ITC LOCKED" value={fmt(result.gstItcLocked)} color="var(--accent-warn)" sub="Section 16(2) statutory lock" />
-          <KPICell label="CAPITAL AT RISK" value={fmt(result.totalAtRisk)} color={riskColor} sub="Principal + ITC scaled by risk" />
-          <KPICell label="TREASURY IMPACT" value={result.isRunwayCollision ? 'RUNWAY COLLISION' : 'BUFFER SAFE'} color={result.isRunwayCollision ? 'var(--accent-danger)' : 'var(--accent-safe)'} sub={result.isRunwayCollision ? `Depleted Day ${result.collisionDay}` : `+${fmt(result.cashBufferAtArrival)} buffer`} />
+          <KPICell label="INVOICE PRINCIPAL" value={fmt(Number(intake?.invoiceAmount) || 0)} color="var(--text-primary)" sub={`Net-${intake?.paymentTermDays || 30} payment terms`} />
+          <KPICell label="GST ITC LOCKED" value={fmt(safeGstItc)} color="var(--accent-warn)" sub="Section 16(2) statutory lock" />
+          <KPICell label="CAPITAL AT RISK" value={fmt(safeTotalAtRisk)} color={riskColor} sub="Principal + ITC scaled by risk" />
+          <KPICell label="TREASURY IMPACT" value={result?.isRunwayCollision ? 'RUNWAY COLLISION' : 'BUFFER SAFE'} color={result?.isRunwayCollision ? 'var(--accent-danger)' : 'var(--accent-safe)'} sub={result?.isRunwayCollision ? `Depleted Day ${result?.collisionDay ?? 'N/A'}` : `+${fmt(safeCashBuffer)} buffer`} />
         </div>
       </div>
 
@@ -1524,23 +1551,23 @@ function DossierPhase({
       </div>
 
       {/* Anomaly Detection Banner (if triggered) */}
-      {result.integrityWarnings && result.integrityWarnings.length > 0 && (
+      {safeWarnings.length > 0 && (
         <div className="border border-[var(--accent-danger)] bg-[var(--bg-surface)] p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-mono font-bold text-[var(--accent-danger)]">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             ANOMALY DETECTION AUDIT
           </div>
           <div className="space-y-2">
-            {result.integrityWarnings.map((w: any, i: number) => (
+            {safeWarnings.map((w: any, i: number) => (
               <div
                 key={i}
                 className="p-2.5 border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-xs font-mono"
               >
                 <div className="text-[10px] font-bold text-[var(--accent-danger)] uppercase">
-                  {w.code}: {w.title}
+                  {w?.code || 'WARNING'}: {w?.title || 'Risk Flag'}
                 </div>
                 <div className="text-[11px] text-[var(--text-primary)] mt-0.5">
-                  {w.description}
+                  {w?.description || ''}
                 </div>
               </div>
             ))}
@@ -1557,8 +1584,9 @@ function DossierPhase({
           Each factor explains why the model increased or reduced the late payment probability for this counterparty.
         </p>
         <div className="space-y-2">
-          {result.topShapFactors && result.topShapFactors.map((f: any, i: number) => {
-            const isIncrease = f.direction === 'RISK_INCREASE';
+          {safeShapFactors.map((f: any, i: number) => {
+            const isIncrease = f?.direction === 'RISK_INCREASE';
+            const impactVal = Number.isFinite(Number(f?.impactScore)) ? Number(f.impactScore) : 0;
             return (
               <div
                 key={i}
@@ -1566,17 +1594,17 @@ function DossierPhase({
               >
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="font-semibold text-[var(--text-primary)]">
-                    {f.factor}
+                    {f?.factor || 'Risk Factor'}
                   </span>
                   <span
                     className="font-bold tabular-nums"
                     style={{ color: isIncrease ? 'var(--accent-danger)' : 'var(--accent-safe)' }}
                   >
-                    {isIncrease ? `+${f.impactScore.toFixed(1)}% Risk Contribution` : `-${f.impactScore.toFixed(1)}% Risk Deduction`}
+                    {isIncrease ? `+${impactVal.toFixed(1)}% Risk Contribution` : `-${impactVal.toFixed(1)}% Risk Deduction`}
                   </span>
                 </div>
                 <p className="text-[11px] font-sans text-[var(--text-muted)]">
-                  {f.explanation}
+                  {f?.explanation || ''}
                 </p>
               </div>
             );
@@ -1617,26 +1645,26 @@ function DossierPhase({
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Risk Probability:</span>
                 <span style={{ color: riskColor }} className="font-bold">
-                  {result.blendedRiskPercent.toFixed(1)}%
+                  {safeRisk.toFixed(1)}%
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Payment Term:</span>
-                <span className="text-[var(--text-primary)]">Net-{intake.paymentTermDays} Days</span>
+                <span className="text-[var(--text-primary)]">Net-{intake?.paymentTermDays || 30} Days</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Expected Settlement:</span>
-                <span className="text-[var(--text-primary)]">Day {result.expectedArrivalDay}</span>
+                <span className="text-[var(--text-primary)]">Day {safeArrival}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Capital at Risk:</span>
-                <span className="text-[var(--text-primary)]">{fmt(result.totalAtRisk)}</span>
+                <span className="text-[var(--text-primary)]">{fmt(safeTotalAtRisk)}</span>
               </div>
             </div>
           </div>
-          {whatIfs.map(
+          {safeWhatIfs.map(
             (w: any) =>
-              w.result && (
+              w?.result && (
                 <div
                   key={w.id}
                   className="border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 space-y-1.5"
@@ -1650,27 +1678,27 @@ function DossierPhase({
                       <span
                         style={{
                           color:
-                            w.result.blendedRiskPercent < 30
+                            Number(w.result.blendedRiskPercent ?? 0) < 30
                               ? 'var(--accent-safe)'
-                              : w.result.blendedRiskPercent < 60
+                              : Number(w.result.blendedRiskPercent ?? 0) < 60
                               ? 'var(--accent-warn)'
                               : 'var(--accent-danger)',
                         }}
                         className="font-bold"
                       >
-                        {w.result.blendedRiskPercent.toFixed(1)}%
+                        {Number(w.result.blendedRiskPercent ?? 0).toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)]">Expected Settlement:</span>
                       <span className="text-[var(--text-primary)]">
-                        Day {w.result.expectedArrivalDay}
+                        Day {Number(w.result.expectedArrivalDay ?? 30)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)]">Capital at Risk:</span>
                       <span className="text-[var(--text-primary)]">
-                        {fmt(w.result.totalAtRisk)}
+                        {fmt(Number(w.result.totalAtRisk ?? 0))}
                       </span>
                     </div>
                   </div>
