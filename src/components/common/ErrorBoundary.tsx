@@ -26,9 +26,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // In production, avoid leaking internal object state or tokens
     if (import.meta.env.DEV) {
-      console.error('[Veritas ErrorBoundary] Caught exception:', error, errorInfo);
+      console.error('[float. ErrorBoundary] Caught exception:', error, errorInfo);
     } else {
-      console.error(`[Veritas ErrorBoundary] Incident ${this.state.incidentId}: An isolated module error occurred.`);
+      console.error(`[float. ErrorBoundary] Incident ${this.state.incidentId}: An isolated module error occurred.`);
     }
   }
 

@@ -1052,7 +1052,7 @@ export const View06Settings: React.FC<View06SettingsProps> = ({ themeState, onTh
 
                   <div className="p-2.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[11px] font-sans text-[var(--text-muted)]">
                     <span className="font-semibold text-[var(--text-primary)]">Repository Files:</span>{' '}
-                    Notebook <code className="font-mono text-[var(--accent-primary)]">notebooks/float.TM.ipynb</code> and standalone FastAPI kernel <code className="font-mono text-[var(--accent-primary)]">notebooks/veritas_colab_kernel.py</code> are located in the <code className="font-mono">notebooks/</code> folder of this repository.
+                    Notebook <code className="font-mono text-[var(--accent-primary)]">notebooks/float.TM.ipynb</code> and standalone FastAPI kernel <code className="font-mono text-[var(--accent-primary)]">notebooks/float_colab_kernel.py</code> are located in the <code className="font-mono">notebooks/</code> folder of this repository.
                   </div>
                 </div>
               )}

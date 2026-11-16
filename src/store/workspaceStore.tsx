@@ -26,10 +26,10 @@ import {
   DEMO_PLANNER_ROWS,
 } from './demoPresets';
 
-const DK_DEFAULTS = 'veritas-treasury-defaults';
-const DK_LEDGER = 'veritas-portfolio-ledger';
-const DK_PROFILE = 'veritas-enterprise-profile';
-const DK_CUSTOM_BIZ = 'veritas-custom-business-index';
+const DK_DEFAULTS = 'float-treasury-defaults';
+const DK_LEDGER = 'float-portfolio-ledger';
+const DK_PROFILE = 'float-enterprise-profile';
+const DK_CUSTOM_BIZ = 'float-custom-business-index';
 const DK_GST_STATE = 'float-gst-workspace-state';
 const DK_RUNWAY_STATE = 'float-runway-workspace-state';
 const DK_PLANNER_STATE = 'float-planner-workspace-state';

@@ -1,9 +1,9 @@
 """
-Veritas AI - Enterprise Google Colab Super-Model Kernel
-======================================================
+float. - Enterprise Google Colab Super-Model Kernel
+=====================================================
 This standalone script runs inside Google Colab (CPU or T4 GPU).
 It spins up a high-performance FastAPI server with a public ngrok tunnel
-and implements the exact backend API contract for Veritas AI:
+and implements the exact backend API contract for float.:
 
 1. GET  /health               -> Health, engine provenance, custom business state, macro FRED spread
 2. POST /predict              -> DealPayload -> 6-Source Global Ensemble Dossier + Exact TreeSHAP
@@ -19,7 +19,7 @@ How to Run in Google Colab:
    !pip install -q fastapi uvicorn pyngrok pydantic lightgbm shap networkx numpy scipy
 3. Paste and run this script.
 4. Copy the public ngrok URL (e.g. https://xxxx.ngrok-free.app).
-5. Open Veritas AI -> Settings -> Section 02 (Live Model Bridge), paste the URL, and click PROBE ENDPOINT.
+5. Open float. -> Settings -> Section 02 (Live Model Bridge), paste the URL, and click PROBE ENDPOINT.
 """
 
 import os
@@ -41,18 +41,18 @@ try:
     import numpy as np
     import networkx as nx
 except ImportError:
-    print("[Veritas Kernel] Missing dependencies. Please run:")
+    print("[float. Kernel] Missing dependencies. Please run:")
     print("pip install fastapi uvicorn pyngrok pydantic lightgbm shap networkx numpy scipy")
     sys.exit(1)
 
 # Initialize FastAPI application
 app = FastAPI(
-    title="Veritas AI Enterprise Risk Kernel",
+    title="float. Treasury & Receivables Risk Kernel",
     description="6-Source Global Ensemble + Custom Business Adapter + Qwen-2.5-7B Tool-Calling Agent",
     version="3.1.0",
 )
 
-# Enable CORS for browser requests from Veritas frontend
+# Enable CORS for browser requests from float. frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -98,8 +98,8 @@ async def security_and_rate_limit_middleware(request: Request, call_next):
     timestamps.append(now)
     RATE_LIMIT_STORE[client_ip] = timestamps
 
-    # 2. Bearer Token Auth (when VERITAS_API_KEY environment variable is configured)
-    api_key_env = os.getenv("VERITAS_API_KEY", "").strip()
+    # 2. Bearer Token Auth (when FLOAT_API_KEY environment variable is configured)
+    api_key_env = os.getenv("FLOAT_API_KEY", "").strip()
     if api_key_env and request.url.path not in ["/health", "/docs", "/openapi.json"]:
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
@@ -616,7 +616,7 @@ def optimal_discount_endpoint(req: OptimalDiscountRequest):
 
 def launch_server():
     print("=" * 65)
-    print("  VERITAS AI - ENTERPRISE SUPER-MODEL KERNEL INITIALIZATION")
+    print("  float. - TREASURY & RECEIVABLES MODEL KERNEL INITIALIZATION")
     print("=" * 65)
 
     port = 8000

@@ -189,7 +189,7 @@ export const DENSITY_PADDING: Record<DensityMode, number> = {
   spacious: 24,
 };
 
-const STORAGE_KEY = 'veritas-theme-state';
+const STORAGE_KEY = 'float-theme-state';
 
 export function loadThemeState(): ThemeState {
   try {

@@ -19,8 +19,8 @@ import type {
 import { evaluateB2bPaymentRisk } from './paymentModel';
 import { solveOptimalDynamicDiscounting } from './statutoryEngine';
 
-const STORAGE_KEY = 'veritas-api-config';
-const STORAGE_LOCAL_INDEX = 'veritas-custom-business-index';
+const STORAGE_KEY = 'float-api-config';
+const STORAGE_LOCAL_INDEX = 'float-custom-business-index';
 
 export interface ApiConfig {
   endpointUrl: string;
@@ -212,7 +212,7 @@ export async function evaluateDealWithColab(
         }
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /predict failed, running calibrated local fallback:', err);
+      console.warn('[float. Bridge] Colab /predict failed, running calibrated local fallback:', err);
     }
   }
 
@@ -254,7 +254,7 @@ export async function evaluateBatchDealsWithColab(
         }
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /predict/batch failed, evaluating locally:', err);
+      console.warn('[float. Bridge] Colab /predict/batch failed, evaluating locally:', err);
     }
   }
 
@@ -293,7 +293,7 @@ export async function importBusinessDataToColab(
         return out;
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /import-business-data failed, saving locally:', err);
+      console.warn('[float. Bridge] Colab /import-business-data failed, saving locally:', err);
     }
   }
 
@@ -344,7 +344,7 @@ export async function simulateBusinessPlan(
         }
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /plan failed, calculating locally:', err);
+      console.warn('[float. Bridge] Colab /plan failed, calculating locally:', err);
     }
   }
 
@@ -388,7 +388,7 @@ export async function askCopilotLive(
         }
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /copilot failed, generating locally:', err);
+      console.warn('[float. Bridge] Colab /copilot failed, generating locally:', err);
     }
   }
 
@@ -442,7 +442,7 @@ export async function solveOptimalDynamicDiscountWithColab(
         }
       }
     } catch (err) {
-      console.warn('[Veritas Bridge] Colab /runway/optimal-discount failed, solving locally:', err);
+      console.warn('[float. Bridge] Colab /runway/optimal-discount failed, solving locally:', err);
     }
   }
 
