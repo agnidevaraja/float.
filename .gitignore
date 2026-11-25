@@ -21,7 +21,12 @@ credentials*.json
 
 # Build outputs
 dist
+dist/
 dist-ssr
+.vercel/
+
+# Local backup secrets
+float_backup_secrets_and_links.txt
 
 # Temporary feature proposals
 feature_list.suggestions.json
